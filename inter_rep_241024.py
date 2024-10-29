@@ -5,24 +5,25 @@
 # # at ±90º: 10sin(90)=10km/s
 # # so v_rel changes from -10 -> 0 -> 10 km/s
 
-# NOTE: CURRENTLY TRIVIAL SENARIO, representative constants - to do
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert
-fs = 10000       # Sampling frequency, samples/s
-f0 = 30          # Original frequency of the signal, Hz
-f_ref = 30
-c = 343          # Speed of sound, m/s
-T = 0.2          # Signal duration, s
+fs = 1e6       # Sampling frequency, samples/s
+f0 = 2e4          # Original frequency of the signal, 2e6Hz
+wvl = 1550e-9  # 1550nm
+c = f0 * wvl
+# c = 3e8         # Speed of light, m/s
+T = 120e-3          # Signal duration, s
 t = np.linspace(-T, T, int(fs * T), endpoint=False)
 deltav = np.linspace(-10, 10, len(t))  # Velocity varying linearly from -10 to 10 km/s with time
 
-ref_signal = np.sin(2 * np.pi * f_ref * t)     # Reference signal (original frequency)
+ref_signal = np.sin(2 * np.pi * f0 * t)     # Reference signal (original frequency)
 
 # Doppler-shifted signal:
 f_shift_deltav_blu = f0 * (c / (c - deltav))   # Blue shift (before apogee, negative velocities)
 f_shift_deltav_red = f0 * (c / (c + deltav))   # Red shift (after apogee, positive velocities)
+# print(c)
+# print(f_shift_deltav_red)
 doppler_signal_deltav_blu = np.sin(2 * np.pi * f_shift_deltav_blu * t)
 doppler_signal_deltav_red = np.sin(2 * np.pi * f_shift_deltav_red * t)
 doppler_signal = np.where(t < 0, doppler_signal_deltav_blu, doppler_signal_deltav_red) # combine blue and red shift into one signal
@@ -38,11 +39,11 @@ plt.tight_layout()
 plt.show()
 
 # plot to see interference =============================================================================================
-T = 3          # Signal duration /s - update for new T
+T = 120          # Signal duration /s - update for new T
 t = np.linspace(-T, T, int(fs * T), endpoint=False)
 deltav = np.linspace(-10, 10, len(t))
 
-ref_signal = np.sin(2 * np.pi * f_ref * t)
+ref_signal = np.sin(2 * np.pi * f0 * t)
 
 f_shift_deltav_blu = f0 * (c / (c - deltav))   # Blue shift (before horizon, negative velocities)
 f_shift_deltav_red = f0 * (c / (c + deltav))   # Red shift (after horizon, positive velocities)
@@ -68,7 +69,7 @@ plt.subplot(3, 1, 2)
 plt.plot(t, doppler_signal, 'r', label='Doppler Shifted Signal')
 plt.title('Doppler Shifted Signal')
 plt.ylabel('Amplitude')
-plt.annotate('Doppler Frequency = %.0f Hz'%(f_shift), xy =(1.62, -1.07))
+# plt.annotate('Doppler Frequency = %.0f Hz'%(f_shift), xy =(1.62, -1.07))
 
 # Resulting signal plot
 plt.subplot(3, 1, 3)
@@ -78,7 +79,7 @@ plt.title('Sum of Signals with Envelope')
 plt.ylabel('Amplitude')
 plt.legend()
 # f_beat = f_shift - f0
-plt.annotate('Beating Frequency = %.0f Hz'%(f_beat), xy =(1.65, -2))
+# plt.annotate('Beating Frequency = %.0f Hz'%(f_beat), xy =(1.65, -2))
 plt.tight_layout()
 plt.show()
 
@@ -104,7 +105,7 @@ plt.show()
 
 # add thermal (gaussian) noise =========================================================================================
 # Adding White Gaussian Noise (WGN) to the Doppler shifted signal
-SNR_dB = 20  # Signal-to-noise ratio in decibels
+SNR_dB = 400  # Signal-to-noise ratio in decibels
 SNR_linear = 10**(SNR_dB / 10)  # Convert dB to linear scale
 signal_power = np.mean(doppler_signal ** 2)  # Power of the Doppler shifted signal
 noise_power = signal_power / SNR_linear  # Calculate noise power based on SNR
@@ -142,94 +143,16 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-# add atmospheric fading noise #############################################################################
-# add noise that subtracts the amplitude of the doppler signal proportional to altitude ...
-#  L_atm=γ×d, d is path length, y is specific attnetuation, L is attneuation of signal
-
-
-# Simulate altitude and create attenuation factor based on altitude
-# NOTE: altitude / azimuthal angle used interchangeably
-max_altitude = 10000  # Maximum altitude in meters for the simulation
-altitude_red = np.linspace(0, max_altitude, len(t))  # Altitude linearly increasing with time
-altitude_blu = np.linspace(max_altitude, 0, len(t))  # Altitude linearly increasing with time
-altitude = np.where(t < 0, altitude_blu, altitude_red)
-f_beat_combined = np.where(t < 0, f_beat_blu, f_beat_red)
-attenuation_factor = 1 - (altitude / max_altitude)  # Attenuation decreases linearly with altitude
-# attenuation_factor = a_spec
-# a_spec = 13/V * (wavelength / 550)**q
-# atten = a_spec * altitude
-# ############################ correct a_spec
-# vis_min = 6
-# vis_max = 50
-# V = np.linspace(vis_min, vis_max, 100)
-#
-# wvl_min = 500
-# wvl_max = 2000
-# wvl = np.linspace(wvl_min, wvl_max, 10, endpoint=False)
-#
-# # q = 0.585 * V ** (1/3)  # uncomment for V < 6 km
-# q = 1.3  # uncomment for 6 < V < 50 km
-# # q = 1.6  # uncomment for V > 50 km
-#
-# plt.figure(figsize=(10, 6))
-#
-# for wavelength in wvl:
-#     a_spec = 13 / V * (wavelength / 550) ** q
-#     plt.plot(V, a_spec, label=f'{wavelength:.0f} nm')
-# #########################################################################
-
-# Apply altitude-based attenuation to the Doppler signal
-doppler_signal_attenuated = doppler_signal * attenuation_factor
-
-# Add Gaussian Noise (AWGN) to the attenuated Doppler signal
-SNR_dB = 20
-SNR_linear = 10**(SNR_dB / 10)
-signal_power = np.mean(doppler_signal_attenuated ** 2)
-noise_power = signal_power / SNR_linear
-noise = np.sqrt(noise_power) * np.random.randn(len(doppler_signal_attenuated))
-noisy_doppler_signal = doppler_signal_attenuated + noise
-
-# Plotting results
-plt.figure(figsize=(10, 6))
-plt.subplot(3, 1, 1)
-plt.plot(t, ref_signal, label='Reference Signal')
-plt.title('Reference Signal')
-plt.ylabel('Amplitude')
-
-plt.subplot(3, 1, 2)
-plt.plot(t, noisy_doppler_signal, 'r', label='Doppler Shifted Signal with Altitude-based Attenuation and AWGN')
-plt.title('Doppler Shifted Signal with Altitude-based Attenuation and Gaussian Noise')
-plt.ylabel('Amplitude')
-
-# Resulting signal plot (Sum and Envelope)
-resulting_signal = ref_signal + noisy_doppler_signal
-analytic_signal = hilbert(resulting_signal)
-envelope = np.abs(analytic_signal)
-
-plt.subplot(3, 1, 3)
-plt.plot(t, resulting_signal, 'k', label='Resulting Wave')
-plt.plot(t, envelope, 'g', label='Envelope')
-plt.title('Sum of Signals with Envelope')
-plt.ylabel('Amplitude')
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-
-
-#################################### find freq1 from beating freq & f2 #################################################
-# now we have 2 signals, doppler shifting signal and the reference of a different frequency, we try find doppler freq
-# f_ref = 30
-# ref_signal = np.sin(2 * np.pi * f_ref * t)
-# when fbeat_amplitude=0, note the time.
+# add atmospheric (maxwell? fading?) noise #############################################################################
 
 # use lstm to predict beyond current data (this dataset isn't representative of true accuracy as
 # too predictable being generated data) then subtract the predicted signal (with doppler) from the reference / expected
 # to get doppler only - use this for real-time correction? as done already with ToT.
 
+
 # do for: 1550 nm, 2MHz clock rate (pulsed wave), (pulse width 1ns) 5min -> qkd 2minpass -30 -> 30 deg, solar
 # synchronous orbit ~2x a day
-
+# c=fλ, 2000000*0.00000155=3.1m/s?
 
 # could i indentify doppler in the oneweb data? if i select a range of just one overhead pass from ToT v-shape
 # and try find a drift to it either side of the apogee? but then i dont have a reference so wouldn’t know the
@@ -244,4 +167,5 @@ plt.show()
 # is only the red-shifted part.
 # 2) ToT varies from ~20500 ns at apogee -> ~20800 ns before next handover. this isnt what a full overhead 30º->150º
 # so full overhead will be like a drift but exp(?) increasing at edges due to doppler.
-# 3) noise on scale of ~50 ns ?
+# 3) noise on scale of ~50 ns ? so snr=2050/5 =~400
+
