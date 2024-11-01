@@ -68,7 +68,7 @@ plt.subplot(3, 1, 2)
 plt.plot(t, doppler_signal, 'r', label='Doppler Shifted Signal')
 plt.title('Doppler Shifted Signal')
 plt.ylabel('Amplitude')
-plt.annotate('Doppler Frequency = %.0f Hz'%(f_shift), xy =(1.62, -1.07))
+# plt.annotate('Doppler Frequency = %.0f Hz'%(f_shift), xy =(1.62, -1.07))
 
 # Resulting signal plot
 plt.subplot(3, 1, 3)
@@ -78,7 +78,7 @@ plt.title('Sum of Signals with Envelope')
 plt.ylabel('Amplitude')
 plt.legend()
 # f_beat = f_shift - f0
-plt.annotate('Beating Frequency = %.0f Hz'%(f_beat), xy =(1.65, -2))
+# plt.annotate('Beating Frequency = %.0f Hz'%(f_beat), xy =(1.65, -2))
 plt.tight_layout()
 plt.show()
 
@@ -245,3 +245,6 @@ plt.show()
 # 2) ToT varies from ~20500 ns at apogee -> ~20800 ns before next handover. this isnt what a full overhead 30º->150º
 # so full overhead will be like a drift but exp(?) increasing at edges due to doppler.
 # 3) noise on scale of ~50 ns ?
+
+
+# start t0 at 30deg, 3min
