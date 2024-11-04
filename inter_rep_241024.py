@@ -16,7 +16,7 @@ f0 = c/wvl       # original signal freq
 T = 180          # Visibility window duration, s
 t = np.linspace(-T, T, int(fs * T), endpoint=False)
 deltav = np.linspace(-10, 10, len(t))  # Velocity varying linearly from -10 to 10 km/s with time
-v =
+v = # find using paper
 
 ref_signal = np.sin(2 * np.pi * f_ref * t)     # Reference signal (original frequency)
 
