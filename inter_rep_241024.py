@@ -16,13 +16,12 @@ f0 = c/wvl       # original signal freq
 T = 180          # Visibility window duration, s
 t = np.linspace(-T, T, int(fs * T), endpoint=False)
 deltav = np.linspace(-10, 10, len(t))  # Velocity varying linearly from -10 to 10 km/s with time
-v = # find using paper
+# v = # find using paper ????
 
 ref_signal = np.sin(2 * np.pi * f_ref * t)     # Reference signal (original frequency)
 
 # Doppler-shifted signal:
-
-fd = f0*v/c
+# fd = f0*v/c
 
 f_shift_deltav_blu = f0 * (c / (c - deltav))   # Blue shift (before apogee, negative velocities)
 f_shift_deltav_red = f0 * (c / (c + deltav))   # Red shift (after apogee, positive velocities)
@@ -36,7 +35,8 @@ delta_signal = ref_signal - doppler_signal # difference between doppler & refere
 plt.figure(figsize=(10, 6))
 # plt.plot(t, ref_signal, label='Reference Signal', color='navy', alpha=1) # Plot the reference signal
 # plt.plot(t, doppler_signal, label='Doppler Shifted Signal', color='red', alpha=0.6) # Plot the Doppler-shifted signal with changing velocity
-plt.plot(t, fd)
+# plt.plot(t, fd)
+plt.plot(t, f_shift)
 plt.title('Doppler Shift with Continuously Changing Velocity')
 plt.xlabel('Time [s]')
 plt.ylabel('Frequency shift / Hz')
