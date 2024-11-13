@@ -5,7 +5,7 @@
 # # at ±90º: 10sin(90)=10km/s
 # # so v_rel changes from -10 -> 0 -> 10 km/s
 
-# NOTE: CURRENTLY TRIVIAL SENARIO, representative constants - to do
+# NOTE: CURRENTLY TRIVIAL SCENARIO, representative constants - to do
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -49,7 +49,6 @@ f_shift_deltav_red = f0 * (c / (c + deltav))   # Red shift (after horizon, posit
 doppler_signal_deltav_blu = np.sin(2 * np.pi * f_shift_deltav_blu * t)
 doppler_signal_deltav_red = np.sin(2 * np.pi * f_shift_deltav_red * t)
 doppler_signal = np.where(t < 0, doppler_signal_deltav_blu, doppler_signal_deltav_red)
-
 
 resulting_signal = ref_signal + doppler_signal    # Sum signals
 analytic_signal = hilbert(resulting_signal)
@@ -215,13 +214,42 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-
-
 #################################### find freq1 from beating freq & f2 #################################################
 # now we have 2 signals, doppler shifting signal and the reference of a different frequency, we try find doppler freq
 # f_ref = 30
 # ref_signal = np.sin(2 * np.pi * f_ref * t)
 # when fbeat_amplitude=0, note the time.
+
+# Estimate original frequency from beat frequency
+f0_estimated_blu = f_shift_deltav_blu - f_beat_blu  # Estimate during blue shift
+f0_estimated_red = f_shift_deltav_red - f_beat_red  # Estimate during red shift
+f0_estimated_combined = np.where(t < 0, f0_estimated_blu, f0_estimated_red)
+
+# add a correction accounting for doppler shift
+correction_blu = f0_estimated_blu * (c/c - deltav)
+correction_red = f0_estimated_red * (c/c + deltav)
+
+f0_est_correct_combined = np.where(t < 0, correction_blu, correction_red)
+
+# Plotting the estimated original frequency over time
+plt.figure(figsize=(10, 6))
+plt.plot(t, f0_estimated_combined, label='Estimated Original Frequency $f_0$', color='blue')
+plt.plot(t, f0_est_correct_combined, label='Estimated Original Frequency corrected for Doppler shift', color='orange')
+plt.axhline(y=f0, color='green', linestyle='--', label='Actual Original Frequency $f_0$')
+plt.title('Estimated Original Frequency from Beating Frequency')
+plt.xlabel('Time [s]')
+plt.ylabel('Frequency [Hz]')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+'''why the discrepancy between original & corrected ? :)'''
+
+
+
+
+
+'''notes ##############################################################################################################
 
 # use lstm to predict beyond current data (this dataset isn't representative of true accuracy as
 # too predictable being generated data) then subtract the predicted signal (with doppler) from the reference / expected
@@ -247,4 +275,4 @@ plt.show()
 # 3) noise on scale of ~50 ns ?
 
 
-# start t0 at 30deg, 3min
+# start t0 at 30deg, 3min '''

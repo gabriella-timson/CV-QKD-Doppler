@@ -1,59 +1,8 @@
-
 import matplotlib.pyplot as plt
 import math as m
 from skyfield.api import load, EarthSatellite, wgs84
 import numpy as np
 import datetime as dt
-
-# use radians to avoid math domain error in sine/cosines
-
-def tle_to_lat_lon(TLE, duration_seconds=5400, time_step=1):
-    """
-    Converts TLE data to latitude and longitude over a specified time duration.
-    - duration_minutes: duration in minutes for which to calculate positions (default is 90 minutes, approx. one orbit).
-    - time_step: time interval in sec between each calculated position.
-    """
-    # Load timescale and create EarthSatellite object
-    ts = load.timescale()
-    satellite = EarthSatellite(TLE[0], TLE[1], "Satellite", ts)
-
-    # Initialize lists for latitude and longitude
-    latitudes = []
-    longitudes = []
-
-    # Calculate position for each time step over the duration
-    start_time = dt.datetime.utcnow()
-    for second in range(0, duration_seconds, time_step):
-        # Get time for the current step
-        t = ts.utc(start_time.year, start_time.month, start_time.day, start_time.hour, start_time.minute, start_time.second + second)
-
-        # Get latitude and longitude from satellite object
-        geocentric = satellite.at(t)
-        subpoint = geocentric.subpoint()
-        latitudes.append(subpoint.latitude.degrees)
-        longitudes.append(subpoint.longitude.degrees)
-
-    return latitudes, longitudes
-
-# Example usage:
-TLE_ISS = [
-    "1 25544U 98067A   24288.38439782 -.00274092  00000+0 -49859-2 0  9990",
-    "2 25544  51.6375  85.0013 0009245  75.5296   8.7941 15.49814641477033"]
-
-latitudes, longitudes = tle_to_lat_lon(TLE_ISS)
-
-# Plot position
-plt.figure(figsize=(10, 6))
-plt.scatter(y=latitudes, x=longitudes, label="Satellite", color='b')
-plt.plot(-77,39,'ro', label="Terminal")
-plt.title("TLE 2D Position")
-plt.xlabel("Longitude / deg")
-plt.ylabel("Latitude / deg")
-plt.grid()
-plt.legend()
-plt.show()
-
-# Constants
 mu = 398600.4418  # Gravitational parameter for Earth in km^3/s^2
 r = 6371e3  # Radius of Earth in meters
 c = 3e8  # Speed of light in m/s
@@ -68,219 +17,151 @@ terminal_lon = Ge  # Example terminal longitude in rad
 thetas = 85.00013 * m.pi / 180  # Ascending node in radians
 we = 7.29212e-5 # angular velocity of Earth: rad/s
 
+# use radians to avoid math domain error in sine/cosines
+'''#####################################################################################################################
+Convert TLE data to lat / lon positions over some duration with time_step interval between each calc position (res)'''
+
+def tle_to_lat_lon(TLE, duration_seconds=5400, time_step=1):
+    ts = load.timescale()
+    satellite = EarthSatellite(TLE[0], TLE[1], "Satellite", ts)     # use skyfield earthsatellite object to propagate TLE using sgp4 propagator
+
+    latitudes = []                          # Initialize lists for latitude and longitude
+    longitudes = []
+    start_time = dt.datetime.utcnow()
+
+    for second in range(0, duration_seconds, time_step): # Calculate position for each time step over the duration
+        t = ts.utc(start_time.year, start_time.month, start_time.day, start_time.hour, start_time.minute, start_time.second + second) # Get time for the current step
+
+        geocentric = satellite.at(t)         # Get latitude and longitude from satellite object
+        subpoint = geocentric.subpoint()     # Get lat / lon for another point
+        latitudes.append(subpoint.latitude.degrees)
+        longitudes.append(subpoint.longitude.degrees)
+    return latitudes, longitudes
+
+TLE_ISS = [                                  # use tle_to_lat_lon for ISS TLE
+    "1 25544U 98067A   24288.38439782 -.00274092  00000+0 -49859-2 0  9990",
+    "2 25544  51.6375  85.0013 0009245  75.5296   8.7941 15.49814641477033"]
+#     ["1 sat_cat_no launch_info   epoch mean_motion_deriv  mean_motion_2ndderiv drag ephem_type  element_set_no,
+#     "2 sat_cat_o  inclination  RA e  arguement_perigee   mean_anom mean_motion(revs/day) rev_no_at_epoch"]
+latitudes, longitudes = tle_to_lat_lon(TLE_ISS)
+
+plt.figure(figsize=(10, 6))                 # Plot sat position
+plt.scatter(y=latitudes, x=longitudes, label="Satellite", color='b')
+plt.plot(-77,39,'ro', label="Terminal")
+plt.title("TLE 2D Position")
+plt.xlabel("Longitude / deg")
+plt.ylabel("Latitude / deg")
+plt.grid()
+plt.legend()
+plt.show()
+
+'''#####################################################################################################################
+Calculate relative angular velocity between sat / terminal at each lat / lon'''
+
 def calculate_relative_angular_velocities(TLE, terminal_lat, terminal_lon, duration_seconds=5400, time_step=1):
-    # Load timescale and create EarthSatellite object
     ts = load.timescale()
     satellite = EarthSatellite(TLE[0], TLE[1], "Satellite", ts)
-
-    # Initialize lists for relative velocities and angular velocities and time steps
     relative_velocities = []
     angular_velocities = []
     time_stamps = []
 
-    # Get the fixed terminal position in ECEF coordinates at the start time
     t = ts.utc(dt.datetime.utcnow().year, dt.datetime.utcnow().month, dt.datetime.utcnow().day,
                dt.datetime.utcnow().hour, dt.datetime.utcnow().minute, dt.datetime.utcnow().second)
-    terminal_position = wgs84.latlon(terminal_lat, terminal_lon).at(t).position.m
+    terminal_position = wgs84.latlon(terminal_lat, terminal_lon).at(t).position.m # terminal position in ECEF at start time
 
-    # Calculate relative velocity and angular velocity for each time step over the duration
     start_time = dt.datetime.utcnow()
-    for second in range(0, duration_seconds, time_step):
-        # Get time for the current step
-        t = ts.utc(start_time.year, start_time.month, start_time.day,
+    for second in range(0, duration_seconds, time_step): # Calculate relative velocity and angular velocity for each time step over the duration
+        t = ts.utc(start_time.year, start_time.month, start_time.day, # Get time for the current step
                    start_time.hour, start_time.minute, start_time.second + second)
 
-        # Satellite position and velocity in ECI frame
-        geocentric = satellite.at(t)
-        sat_position = geocentric.position.m  # Satellite position in meters
-        sat_velocity = geocentric.velocity.m_per_s  # Satellite velocity in m/s
+        geocentric = satellite.at(t)                    # Satellite position and velocity in ECI frame
+        sat_position = geocentric.position.m            # Satellite position in m
+        sat_velocity = geocentric.velocity.m_per_s      # Satellite velocity in m/s
 
-        # Calculate relative position vector (terminal - satellite)
-        relative_position = terminal_position - sat_position
+        relative_position = terminal_position - sat_position    # Calculate relative position vector (terminal - satellite)
 
-        # Calculate the distance (magnitude of relative position vector)
-        distance = np.linalg.norm(relative_position)
+        distance = np.linalg.norm(relative_position) # Calculate the distance (magnitude of relative position vector)
 
-        # Calculate the line-of-sight (LOS) unit vector
-        los_unit_vector = relative_position / distance
+        los_unit_vector = relative_position / distance  # Calculate the line-of-sight (LOS) unit vector
 
-        # Relative velocity along the LOS vector (dot product of satellite velocity and LOS unit vector)
-        relative_velocity = np.dot(sat_velocity, los_unit_vector)
+        relative_velocity = np.dot(sat_velocity, los_unit_vector)  # Relative velocity along the LOS vector (dot product of satellite velocity and LOS unit vector)
 
-        # Calculate angular velocity (linear velocity / distance)
-        angular_velocity = relative_velocity / distance  # in radians per second
+        angular_velocity = relative_velocity / distance  # Calculate angular velocity (lin velocity / distance) in rad/s
 
-        # Store the relative velocity, angular velocity, and timestamp
-        relative_velocities.append(relative_velocity)
+        relative_velocities.append(relative_velocity) # Store the relative velocity, angular velocity, and timestamp
         angular_velocities.append(angular_velocity)
-        time_stamps.append(second)  # Store the time in seconds
+        time_stamps.append(second)
 
-    # Plot relative velocity over time
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 6)) # Plot relative velocity over time
     plt.plot(time_stamps, angular_velocities, label="Angular Velocity (rad/s)", color='b')
     plt.title("Angular Velocity of Satellite with Respect to Terminal Position Over Time")
     plt.xlabel("Time (s)")
     plt.ylabel("Angular Velocity (rad/s)")
     plt.grid()
 
-    # Add vertical lines where relative velocity is zero (or close to zero)
     overhead_label_added = False  # Flag to ensure the label is added only once
-    for i, velocity in enumerate(relative_velocities):
+    for i, velocity in enumerate(relative_velocities): # Add lines at v~0
         if abs(velocity) < 10:  # Threshold for "zero" relative velocity
             plt.axvline(time_stamps[i], color='r', linestyle='--',
                         label="Overhead (v=0)" if not overhead_label_added else "")
             overhead_label_added = True  # Set flag to prevent multiple labels
     plt.legend()
-    # plt.show()
-
+    # plt.show() # uncomment for show separate
     return angular_velocities
 
+'''#####################################################################################################################
+Calculate relative linear velocity between sat / terminal at each lat / lon'''
 
 def calculate_relative_velocities(TLE, terminal_lat, terminal_lon, duration_seconds=5400, time_step=1):
-    # Load timescale and create EarthSatellite object
     ts = load.timescale()
     satellite = EarthSatellite(TLE[0], TLE[1], "Satellite", ts)
-
-    # Initialize lists for relative velocities and time steps
     relative_velocities = []
     time_stamps = []
 
-    # Get the fixed terminal position in ECEF coordinates at the start time
-    t = ts.utc(dt.datetime.utcnow().year, dt.datetime.utcnow().month, dt.datetime.utcnow().day,
+    t = ts.utc(dt.datetime.utcnow().year, dt.datetime.utcnow().month, dt.datetime.utcnow().day, # terminal position in ECEF at start time
                dt.datetime.utcnow().hour, dt.datetime.utcnow().minute, dt.datetime.utcnow().second)
     terminal_position = wgs84.latlon(terminal_lat, terminal_lon).at(t).position.m
 
-    # Calculate relative velocity for each time step over the duration
     start_time = dt.datetime.utcnow()
-    for second in range(0, duration_seconds, time_step):
-        # Get time for the current step
-        t = ts.utc(start_time.year, start_time.month, start_time.day,
+    for second in range(0, duration_seconds, time_step): # Calc relative velocity for each time step over duration
+        t = ts.utc(start_time.year, start_time.month, start_time.day,  # Get time for the current step
                    start_time.hour, start_time.minute, start_time.second + second)
 
-        # Satellite position and velocity in ECI frame
-        geocentric = satellite.at(t)
-        sat_position = geocentric.position.m  # Satellite position in meters
-        sat_velocity = geocentric.velocity.m_per_s  # Satellite velocity in m/s
+        geocentric = satellite.at(t)         # Satellite position and velocity in ECI frame, pos in m, v in m/s
+        sat_position = geocentric.position.m
+        sat_velocity = geocentric.velocity.m_per_s
 
-        # Calculate relative position vector (terminal - satellite)
-        relative_position = terminal_position - sat_position
+        relative_position = terminal_position - sat_position # Calculate relative position vector (terminal - satellite)
 
-        # Calculate the line-of-sight (LOS) unit vector
-        los_unit_vector = relative_position / np.linalg.norm(relative_position)
+        los_unit_vector = relative_position / np.linalg.norm(relative_position) # Calculate the line-of-sight (LOS) unit vector
 
-        # Relative velocity along the LOS vector (dot product of satellite velocity and LOS unit vector)
-        relative_velocity = np.dot(sat_velocity, los_unit_vector)
+        relative_velocity = np.dot(sat_velocity, los_unit_vector) # Relative velocity along the LOS vector (dot product of satellite velocity and LOS unit vector)
 
-        # Store the relative velocity and timestamp
-        relative_velocities.append(relative_velocity)
-        time_stamps.append(second)  # Store the time in seconds
+        relative_velocities.append(relative_velocity) # Store the relative velocity and timestamp
+        time_stamps.append(second)
 
-    # Plot relative velocity over time
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 6))     # Plot relative velocity over time
     plt.plot(time_stamps, relative_velocities, label="Relative Velocity (m/s)", color='b')
     plt.title("Relative Velocity of Satellite with Respect to Terminal Position Over Time")
     plt.xlabel("Time (s)")
     plt.ylabel("Relative Velocity (m/s)")
     plt.grid()
 
-    # Add vertical lines where relative velocity is zero (or close to zero)
     overhead_label_added = False  # Flag to ensure the label is added only once
-    for i, velocity in enumerate(relative_velocities):
+    for i, velocity in enumerate(relative_velocities): # Add lines where relative v~0
         if abs(velocity) < 10:  # Threshold for "zero" relative velocity
             plt.axvline(time_stamps[i], color='r', linestyle='--',
                         label="Overhead (v=0)" if not overhead_label_added else "")
             overhead_label_added = True  # Set flag to prevent multiple labels
     plt.legend()
-    # plt.show()
-
+    # plt.show() # uncomment for show separately
     return relative_velocities
 
-# def calculate_relative_angular_velocity(TLE, terminal_lat, terminal_lon, duration_seconds=10800, time_step=1):
-#     # Load timescale and create EarthSatellite object
-#     ts = load.timescale()
-#     satellite = EarthSatellite(TLE[0], TLE[1], "Satellite", ts)
-#
-#     # Initialize lists for angular velocities and time steps
-#     angular_velocities = []
-#     time_stamps = []
-#
-#     # Calculate position for each time step over the duration
-#     start_time = dt.datetime.utcnow()
-#     prev_latitude = None
-#     prev_longitude = None
-#
-#     for second in range(0, duration_seconds, time_step):
-#         # Get time for the current step
-#         t = ts.utc(start_time.year, start_time.month, start_time.day,
-#                    start_time.hour, start_time.minute, start_time.second + second)
-#
-#         # Get satellite position and subpoint (latitude, longitude)
-#         geocentric = satellite.at(t)
-#         subpoint = geocentric.subpoint()
-#         latitude = subpoint.latitude.degrees
-#         longitude = subpoint.longitude.degrees
-#
-#         # Calculate angular velocity if previous position exists
-#         if prev_latitude is not None and prev_longitude is not None:
-#             # Calculate change in latitude and longitude (Δθ)
-#             delta_lat = np.radians(latitude - prev_latitude)  # Convert to radians
-#             delta_lon = np.radians(longitude - prev_longitude)  # Convert to radians
-#
-#             # Angular velocity (simplified as Δθ/Δt)
-#             angular_velocity = np.sqrt(delta_lat**2 + delta_lon**2) / time_step
-#             angular_velocities.append(angular_velocity)
-#         else:
-#             angular_velocities.append(0)  # No angular velocity for the first step
-#
-#         # Store the time in seconds
-#         time_stamps.append(second)
-#
-#         # Update previous latitude and longitude
-#         prev_latitude = latitude
-#         prev_longitude = longitude
-#
-#     # Plot angular velocity over time
-#     plt.figure(figsize=(10, 6))
-#     plt.plot(time_stamps, angular_velocities, label="Angular Velocity (rad/s)", color='b')
-#     plt.title("Relative Angular Velocity of Satellite with Respect to Terminal Position Over Time")
-#     plt.xlabel("Time (s)")
-#     plt.ylabel("Angular Velocity (rad/s)")
-#     plt.grid()
-#
-#     plt.legend()
-#     plt.show()
-#
-#     return angular_velocities
-
-
-TLE_ISS = [
-    "1 25544U 98067A   24288.38439782 -.00274092  00000+0 -49859-2 0  9990",
-    "2 25544  51.6375  85.0013 0009245  75.5296   8.7941 15.49814641477033"
-]
-
-# TLE_ISS = [
-#     "1 sat_cat_no launch_info   epoch mean_motion_deriv  mean_motion_2ndderiv drag ephem_type  element_set_no,
-#     "2 sat_cat_o  inclination  RA e  arguement_perigee   mean_anom mean_motion(revs/day) rev_no_at_epoch"]
-
-# so here:
-# e = 0.0009245
-# i = 51.6375
-# RA = 85.00013 = thetas
-
-# TLE_EX = [
-#     "1 25544U 98067A   24288.38439782 -.00274092  00000+0 -49859-2 0  9990",
-#     "2 25544  51.6375  85.0013 0009245  75.5296   8.7941 15.49814641477033"
-# ]
-
-# Terminal coordinates (latitude, longitude in radians)
-terminal_lat = np.radians(39)  # Example: 39 degrees North
-terminal_lon = np.radians(-77)  # Example: 77 degrees West
-
-# Calculate and plot angular velocity
-angular_velocities = calculate_relative_angular_velocities(TLE_ISS, terminal_lat, terminal_lon)
+angular_velocities = calculate_relative_angular_velocities(TLE_ISS, terminal_lat, terminal_lon) # Calculate and plot angular velocity
 relative_velocities = calculate_relative_velocities(TLE_ISS, terminal_lat, terminal_lon)
 
-# Function to calculate Doppler shift over time
+'''#####################################################################################################################
+Calculate Doppler shift over time using eqn from You'''
 def calculate_doppler_shift(angular_velocities, latitudes_rad, longitudes_rad):
     doppler_shifts = []
 
@@ -289,39 +170,25 @@ def calculate_doppler_shift(angular_velocities, latitudes_rad, longitudes_rad):
         Ts = latitudes_rad[t]
         Gs = longitudes_rad[t]
 
-        # Doppler shift calculation
-
-        # fdm1 = a * r * fc * ((-ws*m.sin(i)*m.cos(m.asin(m.sin(Ts)/m.sin(i)))*m.tan(Ts)*m.cos(Gs-Ge)-((ws*m.cos(i)/m.cos(Ts))-we*m.cos(Ts))*m.sin(Gs-Ge))*m.cos(Te)+(ws*m.sin(i)*m.cos(thetas))*m.sin(Te))/(c*m.sqrt((a**2)+(r**2)-2*a*r*(m.cos(Ts)*m.cos(Te)*m.cos(Gs-Ge)+m.sin(Ts)*m.sin(Te))))
-
-        # print(m.sin(Ts)/m.sin(i))
-        # print(((a**2)+(r**2)-2*a*r*(m.cos(Ts)*m.cos(Te)*m.cos(Gs-Ge)+m.sin(Ts)*m.sin(Te))))
-        # Calculate the value for asin (ensure it's within the valid range)
-        sin_value = m.sin(Ts) / m.sin(i)
+        sin_value = m.sin(Ts) / m.sin(i)   # Calculate the value for asin (ensure it's within the valid range)
         sin_value = max(-1, min(1, sin_value))  # Clamp the value to [-1, 1]
         asin_value = m.asin(sin_value)  # Now this will not throw a domain error
 
-        # Doppler shift calculation (continued)
+        # Doppler shift eqn
         fdm1 = a * r * fc * ((-ws * m.sin(i) * m.cos(asin_value) * m.tan(Ts) * m.cos(Gs - Ge) -
                               (ws * m.cos(i) / m.cos(Ts)) * m.sin(Gs - Ge)) * m.cos(Te) +
                              (ws * m.sin(i) * m.cos(thetas)) * m.sin(Te)) / (c * m.sqrt(
             a ** 2 + r ** 2 - 2 * a * r * (m.cos(Ts) * m.cos(Te) * m.cos(Gs - Ge) + m.sin(Ts) * m.sin(Te))))
 
-        # fdm1 = (a * r * fc * ((-ws*m.sin(i)*m.cos(m.asin(m.sin(Ts)/m.sin(i)))*m.tan(Ts)*m.cos(Gs-Ge)-
-        #                        ((ws*m.cos(i)/m.cos(Ts))-we*m.cos(Ts))*m.sin(Gs-Ge))*m.cos(Te)+(ws*m.sin(i)*m.cos(thetas))*m.sin(Te))
-        #         /(c*m.sqrt((a**2)+(r**2)-2*a*r*(m.cos(Ts)*m.cos(Te)*m.cos(Gs-Ge)+m.sin(Ts)*m.sin(Te)))))
-
         doppler_shifts.append(fdm1)
-
     return doppler_shifts
 
 latitudes_rad = np.radians(latitudes)
 longitudes_rad = np.radians(longitudes)
 
-# Assume relative_velocities was calculated previously as shown in your code
 doppler_shifts = calculate_doppler_shift(angular_velocities, latitudes_rad, longitudes_rad)
 
-# Plot Doppler shifts over time
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(10, 6)) # Plot Doppler shifts over time
 plt.plot(range(len(doppler_shifts)), doppler_shifts, label="Doppler Shift", color='b')
 plt.title("Doppler Shift Over Time")
 plt.xlabel("Time (s)")
@@ -329,24 +196,20 @@ plt.ylabel("Doppler Shift (Hz)")
 plt.grid()
 plt.legend()
 
-# simple check:
+'''#####################################################################################################################
+Simple Doppler shift eqn w/ linear v to check'''
 def calculate_doppler_shift_simple(relative_velocities, fc):
-    """
-    Simplified Doppler shift calculation using only relative velocity.
-    """
     doppler_shifts = []
 
     for v in relative_velocities:
         # Simplified Doppler shift formula: Δf = (v / c) * f0
         doppler_shift = (v / c) * fc
         doppler_shifts.append(doppler_shift)
-
     return doppler_shifts
 
 doppler_shifts_simple = calculate_doppler_shift_simple(relative_velocities, fc)
 
-# Plot Doppler shifts over time
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(10, 6))         # Plot Doppler shifts over time
 plt.plot(range(len(doppler_shifts_simple)), doppler_shifts_simple, label="Simplified Doppler Shift", color='b')
 plt.title("Simple Doppler Shift Over Time")
 plt.xlabel("Time (s)")
