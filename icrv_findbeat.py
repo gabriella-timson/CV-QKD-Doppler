@@ -1,10 +1,3 @@
-# # eg LEO sat (400km) w orbital v of 7.66km/s, 0º at zenith, 90º at horizon:
-# # at 000º: 10sin(0)=0km/s
-# # at ±30º: 10sin(30)=5km/s
-# # at ±60º: 10sin(60)=8.7km/s
-# # at ±90º: 10sin(90)=10km/s
-# # so v_rel changes from -10 -> 0 -> 10 km/s
-
 # NOTE: CURRENTLY TRIVIAL SCENARIO, representative constants - to do
 
 import numpy as np
@@ -82,27 +75,58 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-# Beating frequency as the absolute difference between Doppler-shifted frequency and reference frequency
-f_beat_blu = np.abs(f_shift_deltav_blu - f0)   # Beating frequency for blue shift
-f_beat_red = np.abs(f_shift_deltav_red - f0)   # Beating frequency for red shift
-f_beat_combined = np.where(t < 0, f_beat_blu, f_beat_red)
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import hilbert, find_peaks
+from scipy.interpolate import interp1d
 
+# Constants
+fs = 10000       # Sampling frequency, samples/s
+f_ref = 30       # Reference signal frequency, but not used to calculate beat frequency
+c = 343          # Speed of sound, m/s
+T = 3            # Signal duration, s
+t = np.linspace(-T, T, int(fs * T), endpoint=False)
+deltav = np.linspace(-10, 10, len(t))  # Linearly changing velocity
 
+# Generate reference and Doppler-shifted signals
+ref_signal = np.sin(2 * np.pi * f_ref * t)  # Reference signal
+f_shift_deltav_blu = f_ref * (c / (c - deltav))   # Blue shift
+f_shift_deltav_red = f_ref * (c / (c + deltav))   # Red shift
+doppler_signal_deltav_blu = np.sin(2 * np.pi * f_shift_deltav_blu * t)
+doppler_signal_deltav_red = np.sin(2 * np.pi * f_shift_deltav_red * t)
+doppler_signal = np.where(t < 0, doppler_signal_deltav_blu, doppler_signal_deltav_red)
 
-plt.figure(figsize=(10, 6)) # Plotting the beating frequency
-plt.plot(t, f_beat_combined, label='Beating Frequency', color='purple')
-plt.title('Beating Frequency as a Function of Time')
+# Combine the signals
+resulting_signal = ref_signal + doppler_signal
+
+# Calculate the envelope of the combined signal
+analytic_signal = hilbert(resulting_signal)
+envelope = np.abs(analytic_signal)
+
+# Find peaks in the envelope (periodic peaks correspond to beat frequency)
+peaks, _ = find_peaks(envelope, height=0.1, distance=fs / (2 * f_ref))
+
+# Calculate time intervals and instantaneous beat frequency as a function of time
+peak_times = t[peaks]
+time_diffs = np.diff(peak_times)
+f_beat_instantaneous = 1 / time_diffs  # Instantaneous beat frequency between successive peaks
+
+# Interpolate beat frequency to have a continuous function over time
+# We use `interp1d` to create a continuous function of beat frequency over time
+f_beat_interp_func = interp1d(peak_times[:-1] + time_diffs / 2, f_beat_instantaneous,
+                              kind='linear', fill_value="extrapolate")
+f_beat_combined = f_beat_interp_func(t)
+
+# Plot the instantaneous beat frequency as a function of time
+plt.figure(figsize=(10, 6))
+plt.plot(t, f_beat_combined, label='Estimated Beat Frequency as a Function of Time', color='purple')
+plt.title('Instantaneous Beat Frequency as a Function of Time')
 plt.xlabel('Time [s]')
-plt.ylabel('Frequency [Hz]')
+plt.ylabel('Beat Frequency [Hz]')
 plt.legend()
 plt.tight_layout()
 plt.show()
 
-# Combined Doppler-shifted frequency for both blue and red shifts
-# combined_f_shift = np.where(t < 0, f_shift_deltav_blu, f_shift_deltav_red)
-# print(f"Reference Frequency: {f0} Hz")
-# print(f"Max Beating Frequency (Blue Shift): {np.max(f_beat_blu):.2f} Hz")
-# print(f"Max Beating Frequency (Red Shift): {np.max(f_beat_red):.2f} Hz")
 
 # add thermal (gaussian) noise =========================================================================================
 # Adding White Gaussian Noise (WGN) to the Doppler shifted signal
@@ -155,30 +179,8 @@ max_altitude = 10000  # Maximum altitude in meters for the simulation
 altitude_red = np.linspace(0, max_altitude, len(t))  # Altitude linearly increasing with time
 altitude_blu = np.linspace(max_altitude, 0, len(t))  # Altitude linearly increasing with time
 altitude = np.where(t < 0, altitude_blu, altitude_red)
-f_beat_combined = np.where(t < 0, f_beat_blu, f_beat_red)
+# f_beat_combined = np.where(t < 0, f_beat_blu, f_beat_red)
 attenuation_factor = 1 - (altitude / max_altitude)  # Attenuation decreases linearly with altitude
-# attenuation_factor = a_spec
-# a_spec = 13/V * (wavelength / 550)**q
-# atten = a_spec * altitude
-# ############################ correct a_spec
-# vis_min = 6
-# vis_max = 50
-# V = np.linspace(vis_min, vis_max, 100)
-#
-# wvl_min = 500
-# wvl_max = 2000
-# wvl = np.linspace(wvl_min, wvl_max, 10, endpoint=False)
-#
-# # q = 0.585 * V ** (1/3)  # uncomment for V < 6 km
-# q = 1.3  # uncomment for 6 < V < 50 km
-# # q = 1.6  # uncomment for V > 50 km
-#
-# plt.figure(figsize=(10, 6))
-#
-# for wavelength in wvl:
-#     a_spec = 13 / V * (wavelength / 550) ** q
-#     plt.plot(V, a_spec, label=f'{wavelength:.0f} nm')
-# #########################################################################
 
 # Apply altitude-based attenuation to the Doppler signal
 doppler_signal_attenuated = doppler_signal * attenuation_factor
@@ -218,25 +220,25 @@ plt.tight_layout()
 plt.show()
 
 #################################### find freq1 from beating freq & f2 #################################################
-# now we have 2 signals, doppler shifting signal and the reference of a different frequency, we try find doppler freq
-# f_ref = 30
-# ref_signal = np.sin(2 * np.pi * f_ref * t)
-# when fbeat_amplitude=0, note the time.
 
 # Estimate original frequency from beat frequency
-f0_estimated_blu = f_shift_deltav_blu - f_beat_blu  # Estimate during blue shift
-f0_estimated_red = f_shift_deltav_red - f_beat_red  # Estimate during red shift
-f0_estimated_combined = np.where(t < 0, f0_estimated_blu, f0_estimated_red)
+# f0_estimated_blu = f_shift_deltav_blu - f_beat_blu  # Estimate during blue shift
+# f0_estimated_red = f_shift_deltav_red - f_beat_red  # Estimate during red shift
+# f0_estimated_combined = np.where(t < 0, f0_estimated_blu, f0_estimated_red)
+
+f0_est_red = f_shift_deltav_red - f_beat_combined
+f0_est_blu = f_shift_deltav_blu - f_beat_combined
+f0_est_combined = np.where(t < 0, f0_est_blu, f0_est_red)
 
 # add a correction accounting for doppler shift
-correction_blu = f0_estimated_blu * (c/c - deltav)
-correction_red = f0_estimated_red * (c/c + deltav)
+correction_blu = f0_est_blu * (c/c - deltav)
+correction_red = f0_est_red * (c/c + deltav)
 
 f0_est_correct_combined = np.where(t < 0, correction_blu, correction_red)
 
 # Plotting the estimated original frequency over time
 plt.figure(figsize=(10, 6))
-plt.plot(t, f0_estimated_combined, label='Estimated Original Frequency $f_0$', color='blue')
+plt.plot(t, f0_est_combined, label='Estimated Original Frequency (beat - deltav) $f_0$', color='blue')
 plt.plot(t, f0_est_correct_combined, label='Estimated Original Frequency corrected for Doppler shift', color='orange')
 plt.axhline(y=f0, color='green', linestyle='--', label='Actual Original Frequency $f_0$')
 plt.title('Estimated Original Frequency from Beating Frequency')
@@ -250,34 +252,3 @@ plt.show()
 as the doppler shift increases, the correction strays further from the true original frequency as the correction is
 based on beat frequency (abs difference between the Doppler-shifted and reference frequencies) and ...? '''
 
-
-
-
-
-'''notes ##############################################################################################################
-
-# use lstm to predict beyond current data (this dataset isn't representative of true accuracy as
-# too predictable being generated data) then subtract the predicted signal (with doppler) from the reference / expected
-# to get doppler only - use this for real-time correction? as done already with ToT.
-
-# do for: 1550 nm, 2MHz clock rate (pulsed wave), (pulse width 1ns) 5min -> qkd 2minpass -30 -> 30 deg, solar
-# synchronous orbit ~2x a day
-
-
-# could i indentify doppler in the oneweb data? if i select a range of just one overhead pass from ToT v-shape
-# and try find a drift to it either side of the apogee? but then i dont have a reference so wouldn’t know the
-# extent of the doppler shift embedded in the data. but i could estimate the extent of the doppler shift for this
-# - if i had relative velocity of the oneweb satellite?
-# can't use oneweb data in any way as it isnt mine but maybe i could generate similar data to the oneweb data for
-# one satellite pass - as in similar structure but with the quantum satellite paramteres as above.
-
-# what i observe from data
-# 1) one pass is ~3 minutes, but doesnt show a full pass as it is just whihc satellite is
-# closest to the ground station at one time so it probably picks up at apogee and then slowly gets further away. ie this
-# is only the red-shifted part.
-# 2) ToT varies from ~20500 ns at apogee -> ~20800 ns before next handover. this isnt what a full overhead 30º->150º
-# so full overhead will be like a drift but exp(?) increasing at edges due to doppler.
-# 3) noise on scale of ~50 ns ?
-
-
-# start t0 at 30deg, 3min '''
