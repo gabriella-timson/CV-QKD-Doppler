@@ -172,7 +172,6 @@ plt.show()
 # add noise that subtracts the amplitude of the doppler signal proportional to altitude ...
 #  L_atm=γ×d, d is path length, y is specific attnetuation, L is attneuation of signal
 
-
 # Simulate altitude and create attenuation factor based on altitude
 # NOTE: altitude / azimuthal angle used interchangeably
 max_altitude = 10000  # Maximum altitude in meters for the simulation
@@ -220,7 +219,6 @@ plt.tight_layout()
 plt.show()
 
 #################################### find freq1 from beating freq & f2 #################################################
-
 # Estimate original frequency from beat frequency
 # f0_estimated_blu = f_shift_deltav_blu - f_beat_blu  # Estimate during blue shift
 # f0_estimated_red = f_shift_deltav_red - f_beat_red  # Estimate during red shift
@@ -248,7 +246,7 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-'''why the discrepancy between original & corrected ? :)
+'''why the discrepancy between original & corrected ? :
 as the doppler shift increases, the correction strays further from the true original frequency as the correction is
 based on beat frequency (abs difference between the Doppler-shifted and reference frequencies) and ...? '''
 

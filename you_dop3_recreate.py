@@ -81,7 +81,6 @@ cosψ = (
 # cosψ = m.cos(Ts)*m.cos(Te)*m.cos(Gs-Ge) + m.sin(Ts)*m.sin(Te)
 s = (a**2 + r**2 - 2*a*r*cosψ)**(1/2)
 v = -0.5*(a**2 + r**2 - 2*a*r*cosψ)**(-1/2) * (-2*a*r*ddt_cosψ)
-
 fD = v*fc/c
 
 plt.plot(t, fD, label="Exact Doppler")

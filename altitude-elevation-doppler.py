@@ -39,8 +39,14 @@ terminal_lat = Te  # Example terminal latitude in rad
 terminal_lon = Ge  # Example terminal longitude in rad
 thetas = 85.00013 * m.pi / 180  # Ascending node in radians
 we = 7.29212e-5 # angular velocity of Earth: rad/s
+c = 3e8  # Speed of light (m/s)
+G = 6.67e-11  # Gravitational constant (m^3/kg/s^2)
+m = 5.972e24  # Mass of Earth (kg)
+M = 5.972e24  # Mass of Earth (kg)
+R_e = 6.371e6  # Earth's radius (m)
 
 '''from scratch ...'''
+import math as m
 # 1 - trajectories
 x=np.linspace(-2000, 2000, 2000)
 θ30=30*m.pi/180
@@ -50,7 +56,7 @@ alt30=2000
 alt60=1000
 alt90=0
 y90=0
-import math as m
+
 # y30 = (alt30-(alt30/(m.tan(θ30))))/alt30**2*x**2 + alt30/(m.tan(θ30))
 # y60 = (alt60-(alt60/(m.tan(θ60))))/alt60**2*x**2 + alt60/(m.tan(θ60))
 y30_4 = 536/8000000*x**2+1732
@@ -68,32 +74,19 @@ plt.legend()
 plt.show
 
 # 2 - velocities
-G = 6.67e-11
-m=5.972e24
 h=10e6
 re=6.371e6
-v_orb = np.sqrt(G*m/(re+h))
+h = 1e6  # Altitude (1000 km in meters)
+fc = 10e9  # Carrier frequency (10 GHz)
+
+# Orbital velocity
+v_orb = np.sqrt(G * M / (R_e + h))
 v_rel30 = np.cos(θ30)*v_orb
 v_rel60 = np.cos(θ60)*v_orb
 v_rel90 = np.cos(0)*v_orb
 fd30 = fc* v_rel30/c
 fd60 = fc* v_rel60/c
 fd90 = fc* v_rel90/c
-
-import numpy as np
-import matplotlib.pyplot as plt
-import math as m
-
-# Constants
-G = 6.67e-11  # Gravitational constant (m^3/kg/s^2)
-M = 5.972e24  # Mass of Earth (kg)
-R_e = 6.371e6  # Earth's radius (m)
-h = 1e6  # Altitude (1000 km in meters)
-c = 3e8  # Speed of light (m/s)
-fc = 10e9  # Carrier frequency (10 GHz)
-
-# Orbital velocity
-v_orb = np.sqrt(G * M / (R_e + h))
 
 # Define trajectories
 x = np.linspace(-2000, 2000, 500)
@@ -136,16 +129,17 @@ contour = plt.contourf(X, Y, Z, levels=100, cmap='RdBu_r')
 plt.colorbar(contour, label='Doppler Shift (Hz)')
 
 # Overlay trajectories
-plt.plot(y30_4, x, label='30º Trajectory', color='gold')
-plt.plot(-y30_4, x, label='-30º Trajectory', color='gold', linestyle='--')
+plt.plot(y30_4, x, label='30º Trajectory', color='orange')
+plt.plot(-y30_4, x, label='-30º Trajectory', color='orange', linestyle='--')
 plt.plot(y60_4, x, label='60º Trajectory', color='orange')
 plt.plot(-y60_4, x, label='-60º Trajectory', color='orange', linestyle='--')
-plt.axvline(0, color='navy', label='90º Trajectory')
+plt.axvline(0, color='orange', label='90º Trajectory')
 
 # Labels and aesthetics
-plt.title('Doppler Shift Contour Plot Along Satellite Trajectories')
+plt.title('Doppler Shift Contour Plot Along Satellite Trajectories, fc = 10 GHz')
 plt.xlabel('X Position (km)')
 plt.ylabel('Y Position (km)')
+plt.plot(0,0,"o", color='lime', label="Zenith")
 plt.ylim(-2000, 2000)
 plt.xlim(-2000, 2000)
 plt.grid(True)
@@ -616,3 +610,6 @@ end_time = time.time()
 # Calculate and print the elapsed time
 elapsed_time = end_time - start_time
 print(f"Total runtime: {elapsed_time:.2f} seconds")
+
+# change frequency to THz
+# 1550nm = 192.34 THz (https://www.fiberdyne.com/products/itu-grid.html)
