@@ -3,6 +3,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert, find_peaks
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import hilbert, find_peaks
+from scipy.interpolate import interp1d
 
 fs = 10000       # Sampling frequency, samples/s
 f0 = 30          # Original frequency of the signal, Hz
@@ -75,10 +79,7 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import hilbert, find_peaks
-from scipy.interpolate import interp1d
+
 
 # Constants
 fs = 10000       # Sampling frequency, samples/s
