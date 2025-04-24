@@ -6,8 +6,8 @@ from scipy import signal
 
 t = np.arange(0, 2, 0.005)                   # set time array from 0-2s in 0.01s intervals
 
-a1, w1, phi1 = 100, 10, 90                     # define amplitude, freq, phase
-a2, w2, phi2 = 100, 12, 0
+a1, w1, phi1 = 1, 5, 90                    # define amplitude, freq, phase
+a2, w2, phi2 = 1, 10, 0
 signal1 = a1 * np.cos(2 * np.pi * w1 * t + phi1) # define cosine waves based on paras
 signal2 = a2 * np.cos(2 * np.pi * w2 * t + phi2)
 
@@ -111,6 +111,11 @@ ax2.set_xlabel("Time / s")
 axsum.plot(t, sigdop+signal2, 'k')             # resulting wave plot
 axsum.set_ylabel("Resulting Wave Amplitude")
 
+plt.show()
+
+
+plt.plot(t, signal1, 'b', linewidth=3)                     # wave 1 plot
+plt.plot(t, signal1_dop_red, 'r', alpha=1, label="Doppler shift", linewidth=3)
 plt.show()
 
 # ==================================================== Find w2 from w_beat & w1 ====================================

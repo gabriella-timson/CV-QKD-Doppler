@@ -107,7 +107,7 @@ plt.grid(True)
 plt.legend()
 plt.show()
 
-files = ["27.02.25_ghz_-4000.txt",
+files0 = ["27.02.25_ghz_-4000.txt",
          "27.02.25_ghz_-3000.txt",
          "27.02.25_ghz_-2000.txt",
          "27.02.25_ghz_-1000.txt",
@@ -120,7 +120,7 @@ files = ["27.02.25_ghz_-4000.txt",
     ]
 
 # Loop through each file and plot
-for filename in files:
+for filename in files0:
     data = np.loadtxt(filename, delimiter=",")
     time = data[:, 0]  # First column (Time in seconds)
     signal_2 = data[:, 2]  # Third column (Signal 2)
@@ -133,23 +133,6 @@ for filename in files:
     plt.legend()
     plt.grid(True)
 plt.show()
-
-# addition of 0 offset files for central peak
-# combine0 = ["27.02.25_ghz_0_retuned3.txt", "27.02.25_ghz_0.txt"]# "06.03.25_ghz_0.txt"]
-# zero = "zero.txt"
-# all_data = []
-# for file in combine0:
-#     try:
-#         data = np.loadtxt(file, delimiter=",")  # Load data
-#         all_data.append(data)  # Append to list
-#     except ValueError:
-#         print(f"Warning: {file} might have formatting issues, skipping.")
-# if all_data:
-#     combined_data = np.vstack(all_data)  # Merge all data arrays
-#     np.savetxt(zero, combined_data, delimiter=",", fmt="%.15E")
-#     print(f"All data combined into {zero}")
-# else:
-#     print("No valid data files found. Nothing to combine.")
 
 
 files = [
@@ -232,15 +215,109 @@ files = [
     "06.03.25_ghz_4500.txt",
 ]
 
+files2 = [
+            # "20.03.25_-4000.txt",
+          # "20.03.25_-3900.txt",
+          # "20.03.25_-3800.txt",
+          # "20.03.25_-3700.txt",
+          # "20.03.25_-3600.txt",
+          # "20.03.25_-3500.txt",
+          # "20.03.25_-3400.txt",
+          # "20.03.25_-3300.txt",
+          "20.03.25_-3200.txt",
+          "20.03.25_-3100.txt",
+          "20.03.25_-3000.txt",
+          "20.03.25_-2900.txt",
+          "20.03.25_-2800.txt",
+          "20.03.25_-2700.txt",
+          "20.03.25_-2600.txt",
+          "20.03.25_-2500.txt",
+          "20.03.25_-2400.txt",
+          "20.03.25_-2300.txt",
+          "20.03.25_-2200.txt",
+          "20.03.25_-2100.txt",
+          "20.03.25_-2000.txt",
+          "20.03.25_-1900.txt",
+          "20.03.25_-1800.txt",
+          "20.03.25_-1700.txt",
+          "20.03.25_-1600.txt",
+          "20.03.25_-1500.txt",
+          "20.03.25_-1400.txt",
+          "20.03.25_-1300.txt",
+          "20.03.25_-1200.txt",
+          "20.03.25_-1100.txt",
+          "20.03.25_-1000.txt",
+          "20.03.25_-900.txt",
+          "20.03.25_-800.txt",
+          "20.03.25_-700.txt",
+          "20.03.25_-600.txt",
+          "20.03.25_-500.txt",
+          "20.03.25_-400.txt",
+          "20.03.25_-300.txt",
+          "20.03.25_-200.txt",
+          "20.03.25_-100.txt",
+          "20.03.25_0.txt",
+          "20.03.25_100.txt",
+          "20.03.25_200.txt",
+          "20.03.25_300.txt",
+          "20.03.25_400.txt",
+          "20.03.25_500.txt",
+          "20.03.25_600.txt",
+          "20.03.25_700.txt",
+          "20.03.25_800.txt",
+          "20.03.25_900.txt",
+          "20.03.25_1000.txt",
+          "20.03.25_1100.txt",
+          "20.03.25_1200.txt",
+          "20.03.25_1300.txt",
+          "20.03.25_1400.txt",
+          "20.03.25_1500.txt",
+          "20.03.25_1600.txt",
+          "20.03.25_1700.txt",
+          "20.03.25_1800.txt",
+          "20.03.25_1900.txt",
+          "20.03.25_2000.txt",
+          "20.03.25_2100.txt",
+          "20.03.25_2200.txt",
+          "20.03.25_2300.txt",
+          "20.03.25_2400.txt",
+          "20.03.25_2500.txt",
+          "20.03.25_2600.txt",
+          "20.03.25_2700.txt",
+          "20.03.25_2800.txt",
+          "20.03.25_2900.txt",
+          "20.03.25_3000.txt",
+          "20.03.25_3100.txt",
+          "20.03.25_3200.txt",
+          "20.03.25_3300.txt",
+          "20.03.25_3400.txt",
+          "20.03.25_3500.txt",
+          "20.03.25_3600.txt",
+          "20.03.25_3700.txt",
+          "20.03.25_3800.txt",
+          "20.03.25_3900.txt",
+          "20.03.25_4000.txt",
+          "20.03.25_4100.txt",
+          "20.03.25_4200.txt",
+          "20.03.25_4300.txt",
+          "20.03.25_4400.txt",
+          "20.03.25_4500.txt",
+          "20.03.25_4600.txt",
+          "20.03.25_4700.txt",
+          "20.03.25_4800.txt",
+
+
+          ]
+
 # Define time shift params, a colormap & arrays for concatenation
 T = 2e-9  # Each dataset represents a 2 ns segment
 start_time = 0  # Initialize start time
-colors = plt.cm.viridis(np.linspace(0, 1, len(files)))
+colors = plt.cm.viridis(np.linspace(0, 1, len(files0)))
 all_time = []
 all_signals = []
 
 plt.figure(figsize=(12, 6))
-for i, (filename, color) in enumerate(zip(files, colors)):
+for i, (filename, color) in enumerate(zip(files0, colors)):
     data = np.loadtxt(filename, delimiter=",")
     time = data[:, 0]  # First column (Time)
     signal_2 = data[:, 2]  # Third column (Signal 2)
@@ -276,21 +353,23 @@ envelope_times_exp = []  # Single time axis without gaps
 # block_size_exp = int(6e-9 * 22e9)  # Number of samples in each 4 ns block
 block_size_exp = int(3 * 70)
 
+Tzenith = 95e-9 # halfway point, should be offset = 0
+
 for i in range(0, len(all_time), block_size_exp): 
     t_block = all_time[i:i + block_size_exp]
     signal_block = all_signals[i:i + block_size_exp]
 
     if len(t_block) > 0:
-        min_vals = signal_block[t_block < 35e-9] if any(t_block < 35e-9) else []
-        max_vals = signal_block[t_block > 35e-9] if any(t_block > 35e-9) else []
+        min_vals = signal_block[t_block < Tzenith] if any(t_block < Tzenith) else []
+        max_vals = signal_block[t_block > Tzenith] if any(t_block > Tzenith) else []
 
         if len(min_vals) > 0:
             envelope_min_exp.append(np.min(min_vals))
-            envelope_times_exp.append(np.mean(t_block[t_block < 35e-9]))  # 0-9 to 22 now ns
+            envelope_times_exp.append(np.mean(t_block[t_block < Tzenith]))  # 0-9 to 22 now ns
 
         if len(max_vals) > 0:
             envelope_max_exp.append(np.max(max_vals))
-            envelope_times_exp.append(np.mean(t_block[t_block > 35e-9]))  # Directly follows min values
+            envelope_times_exp.append(np.mean(t_block[t_block > Tzenith]))  # Directly follows min values
 
 # Merge min and max envelopes into a single dataset for smooth plotting
 envelope_values_exp = envelope_min_exp + envelope_max_exp  # First min, then max
@@ -377,23 +456,31 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-amplitude_min = 0.05
-amplitude_max = 0.15
+# amplitude_min = 0.056
+# amplitude_max = 0.168
+amplitude_min = 0.15
+amplitude_max = 0.05
 all_interference = (all_interference - np.min(all_interference)) / (np.max(all_interference) - np.min(all_interference))  # Normalize to 0-1
-all_interference = all_interference * (amplitude_max - amplitude_min) + amplitude_min  # Scale to the desired range
+all_interference = amplitude_min + all_interference * (amplitude_max - amplitude_min)
+
+# all_time = 1.62e-7 * (all_time - np.min(all_time)) / (np.max(all_time) - np.min(all_time))
 
 plt.figure(figsize=(12, 6))
-plt.plot(all_time, all_interference, label="Simulation", alpha=0.2, color='black')
-for i, (filename, color) in enumerate(zip(files, colors)):
+plt.plot(all_time, all_interference, label="Simulation", alpha=0.8, color='C0')
+for i, (filename, color) in enumerate(zip(files0, colors)):
     data = np.loadtxt(filename, delimiter=",")
     time = data[:, 0]  # First column (Time)
     signal_2 = data[:, 2]  # Third column (Oscilloscope Signal 2)
     t_shifted = time - time[0] + i * T  # Shift each file’s time forward by i * T
-    plt.plot(t_shifted, signal_2, label=f"{filename}", color='blue')
-plt.legend(fontsize=8, loc='upper right')
+    # mask = (t_shifted >= 0.19e-7) & (t_shifted <= 1.8e-7)
+    # t_shifted = t_shifted[mask]
+
+    plt.plot(t_shifted, signal_2, label=f"{filename}", color='red', linewidth=5)
+# plt.legend(fontsize=8, loc='upper right')
 plt.title('Sequential Interference Pattern - Data & Simulation')
 plt.xlabel('Time (s)')
 plt.ylabel('Amplitude')
+plt.xlim()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
@@ -406,7 +493,7 @@ h = 700e3  # Satellite's altitude (m)
 f0 = 192.34  # Original frequency (THz)
 c = 3e8  # Speed of light (m/s)
 v_orb = np.sqrt(G * M / (R + h))  # Orbital speed
-T = 70e-9  # Total duration in seconds
+T = Tzenith*2  # Total duration in seconds
 f = 1 / T # Frequency (1/period)
 sample_interval = 2e-9  # Sampling every 2 ns
 sample_times = np.arange(0, T, sample_interval)  # Time points to sample at
@@ -427,10 +514,10 @@ subtraction = np.array(env_values_norm) - np.array(norm_dop_int)
 
 '''another simulated envelope to subtract'''
 # Constants
-fs = 1       # Sampling frequency, samples/s
-f0 = 192.34      # Original frequency of the signal, Hz
+fs = 10e9       # Sampling frequency, samples/s
+f0 = 192.34e12      # Original frequency of the signal, Hz
 c = 3e8          # Speed of light, m/s
-T = 1400        # Signal duration, s (changed to 70 milliseconds)
+T = Tzenith*2        # Signal duration, s (changed to 70 milliseconds)
 G = 6.67430e-11  # Gravitational constant (m^3/kg/s^2)
 M = 5.972e24     # Earth's mass (kg)
 R = 6371e3       # Earth's radius (m)
@@ -486,7 +573,7 @@ i = 51.6375 * m.pi / 180  # Inclination angle in radians - ISS
 wE = 7.29212e-5 # angular velocity of Earth: rad/s
 Te = 39 * m.pi / 180 # terminal lat (WDC)
 Ge = -77 * m.pi / 180 # terminal lon
-T = 1400*4
+T = 10
 t = np.linspace(0, T, T)
 
 # Satellite ephemerides & ωs as a function of t
@@ -632,8 +719,8 @@ plt.show()
 analytic_signal2 = hilbert(beat_wave_filtered_rescaled)
 env_max2 = np.abs(analytic_signal2)    # The envelope is the absolute value of the analytic signal
 env_min2 = -np.abs(analytic_signal2)
-envelope_comb2 = np.where(t < 35e-9, env_min2, env_max2)
 
+envelope_comb2 = np.where(t < 35e-9, env_min2, env_max2)
 envelope_comb_interp2 = np.interp(envelope_times_exp, t_filtered_rescaled, envelope_comb2)
 env_you_sub = envelope_comb_interp2 - env_values_norm
 
