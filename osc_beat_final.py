@@ -465,8 +465,6 @@ smooth_beat_residual_MA = (beat_envelope_interp - smoothed_envelope_MA)
 smooth_beat_residual_SG = (beat_envelope_interp - smoothed_envelope_SG)
 beat_residual = (beat_envelope_interp - exp_envelope)
 
-
-
 if len(beat_envelope_interp) < len(sim_envelope):
     beat_envelope_interp = signal.resample(beat_envelope_interp, len(sim_envelope))
 else:

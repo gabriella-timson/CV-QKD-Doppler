@@ -2407,7 +2407,6 @@ plt.title("All Doppler Compensation Algorithms - Residuals")
 plt.grid(True)
 plt.show()
 
-
 # Create time mask for the specified range
 start_time = 1.5e9  # Example: 1.0 billion seconds
 end_time = 4e9    # Example: 1.5 billion seconds

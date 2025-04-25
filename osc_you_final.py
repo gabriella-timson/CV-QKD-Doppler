@@ -523,6 +523,13 @@ TLE_ISS = [                                  # use tle_to_lat_lon for ISS TLE
     "2 25544  51.6375  85.0013 0009245  75.5296   8.7941 15.49814641477033"]
 
 
+# # use tle_to_lat_lon for synthetic ISS TLE - corrected to 700km
+# TLE_ISS = [
+#     "1 99999U 24001A   24288.50000000  .00000000  00000+0  00000+0 0  9999",
+#     "2 99999  51.6375  85.0013 0000001  75.5296   8.7941 14.71357800    01"
+# ]
+
+
 # Compute satellite positions (from TLE, as before)
 latitudes, longitudes = tle_to_lat_lon(TLE_ISS)
 Ts = np.array(latitudes)  # Satellite latitude (rad)
@@ -590,7 +597,7 @@ def calculate_envelope(data, chunk_size= 100):
             envelope_times.append(i + np.argmax(chunk))
     return np.array(envelope), np.array(envelope_times)
 
-you_envelope, t = calculate_envelope(you_envelope, chunk_size=1)
+you_envelope, t = calculate_envelope(you_envelope, chunk_size=1)    # if chunk size = 1, there is no enveloping
 
 # Plot
 plt.figure(figsize=(10, 6))
@@ -632,12 +639,57 @@ exp_envelope =  (exp_envelope - np.min(exp_envelope)) / (np.max(exp_envelope) - 
 smoothed_envelope_MA = 0.8*((smoothed_envelope_MA - np.min(smoothed_envelope_MA)) / (np.max(smoothed_envelope_MA) - np.min(smoothed_envelope_MA)))
 smoothed_envelope_SG = 0.8*((smoothed_envelope_SG - np.min(smoothed_envelope_SG)) / (np.max(smoothed_envelope_SG) - np.min(smoothed_envelope_SG)))
 
+#
+# if len(you_envelope) > len(exp_envelope):
+#     you_envelope = signal.resample(you_envelope, len(exp_envelope))
+# else:
+#     exp_envelope = signal.resample(exp_envelope, len(you_envelope))
+# you_residual = you_envelope - exp_envelope
 
+print(len(you_envelope))
+print(len(exp_envelope))
+
+# =======
+import numpy as np
+from scipy import signal
+import matplotlib.pyplot as plt
+
+# Original signal you_envelope
+# Assuming you_envelope is already defined
+# Resample the signal
 if len(you_envelope) > len(exp_envelope):
-    you_envelope = signal.resample(you_envelope, len(exp_envelope))
+    # If you_envelope is longer, resample it to match the length of exp_envelope
+    you_envelope_resampled = signal.resample(you_envelope, len(you_envelope))
+    original_signal = you_envelope
+    resampled_signal = you_envelope_resampled
 else:
-    exp_envelope = signal.resample(exp_envelope, len(you_envelope))
-you_residual = you_envelope - exp_envelope
+    # If exp_envelope is longer, resample exp_envelope to match you_envelope length
+    exp_envelope_resampled = signal.resample(exp_envelope, len(you_envelope))
+    original_signal = exp_envelope
+    resampled_signal = exp_envelope_resampled
+
+# Calculate residual: difference between original and resampled signal
+residual = original_signal - resampled_signal
+
+# Calculate uncertainty (standard deviation of the residual)
+uncertainty = np.std(residual)
+
+print("Uncertainty introduced by interpolation:", uncertainty)
+
+max_amplitude = np.max(original_signal)  # Or np.max(resampled_signal)
+relative_uncertainty = np.std(residual) / max_amplitude
+print("Relative Uncertainty:", relative_uncertainty)
+
+
+# Optionally, plot the original and resampled signals and show the residuals
+plt.figure(figsize=(10, 6))
+plt.plot(original_signal, label="Original Signal (you_envelope)", alpha=0.7)
+plt.plot(resampled_signal, label="Resampled Signal", alpha=0.7)
+plt.fill_between(range(len(residual)), residual - uncertainty, residual + uncertainty, color='orange', alpha=0.3, label="Uncertainty Range")
+plt.legend()
+plt.title('Comparison of Original and Resampled Signals with Uncertainty Range')
+plt.show()
+# =======
 
 smooth_you_residual_MA = (you_envelope - smoothed_envelope_MA)
 smooth_you_residual_SG = (you_envelope - smoothed_envelope_SG)
