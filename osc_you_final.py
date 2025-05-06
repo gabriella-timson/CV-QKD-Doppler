@@ -9,7 +9,6 @@ import numpy as np
 import re
 from scipy.interpolate import interp1d
 from scipy import signal
-
 from scipy.signal import hilbert
 from scipy import interpolate
 import math as m
@@ -567,6 +566,60 @@ plt.ylabel("Doppler frequency / THz")
 plt.grid()
 plt.show()
 
+
+
+# DOPPLER RATE
+dt = t[1] - t[0]
+dfdt = np.gradient(fD, dt, edge_order=2)
+dfdt_smooth = dfdt
+dfdt_smooth = savgol_filter(dfdt, window_length=101, polyorder=3)
+
+# Find max and min Doppler rates
+min_rate_idx = np.argmin(np.abs(dfdt_smooth[np.nonzero(dfdt_smooth)]))
+max_rate_idx = np.argmax(np.abs(dfdt_smooth))
+
+min_rate = np.abs(dfdt_smooth[np.nonzero(dfdt_smooth)][min_rate_idx])
+max_rate = np.abs(dfdt_smooth[max_rate_idx])
+
+# Time indices for plotting markers
+# Careful with nonzero indices
+nonzero_indices = np.nonzero(dfdt_smooth)[0]
+min_rate_time = t[nonzero_indices[min_rate_idx]]
+max_rate_time = t[max_rate_idx]
+
+print(f"\nVALIDATED Doppler Rates:")
+print(f"• Max rate: {max_rate:.4f} Hz/s")
+print(f"• Min rate: {min_rate:.4f} Hz/s")
+print(f"• System can detect rates > {fs/(2*T_pass):.4f} Hz/s")
+
+# Parameters
+delta_f_per_step = 0.1e6  # 0.1 MHz per step
+num_steps = 80  # 81 datasets (thus 80 steps)
+total_time = 5000  # seconds
+delta_f_total = delta_f_per_step * (num_steps - 1)  # 80 steps in # Total frequency shift
+doppler_rate_experiment = delta_f_total / total_time  # Hz/s # Doppler rate (constant)
+t_exp = np.linspace(0, total_time, num_steps) # Time array matching the total time
+
+f_shift_exp = doppler_rate_experiment * (t_exp - t_exp[0])  # start @ 0 Hz, constant rate so linear Doppler shift/time
+doppler_rate_exp_array = np.full_like(t_exp, doppler_rate_experiment) # Doppler rate array (constant value)
+print(f"Doppler rate (experiment): {doppler_rate_experiment:.2f} Hz/s")
+
+plt.figure(figsize=(10,5))
+plt.plot(t_exp, doppler_rate_exp_array, label='Experimental Doppler rate (13.3 kHz/s)', linestyle='--')
+plt.plot(t, dfdt_smooth, label='Smoothed Doppler Rate (Hz/s)', color='blue')
+plt.scatter(max_rate_time, dfdt_smooth[max_rate_idx], color='red', label=f'Max Rate: {max_rate:.2e} Hz/s', zorder=10)
+plt.scatter(min_rate_time, dfdt_smooth[nonzero_indices[min_rate_idx]], color='green', label=f'Min Rate: {min_rate:.2e} Hz/s', zorder=10)
+plt.xlabel('Time (s)')
+plt.ylabel('Doppler Rate (Hz/s)')
+plt.title('Doppler Rates over Time, Experimental vs Ephemeris Simulation')
+# plt.axvspan(0, 120, alpha=0.2, label='Poor visibility regions (≤30º from Horizon)')
+# plt.axvspan(480, 600, alpha=0.2)
+# plt.xlim(0,600)
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
 # beat_frequency = np.abs(fc - fD) / 2  # Half the Doppler shift
 # beat_signal = 2 * np.sin(2 * np.pi * beat_frequency * t)
 
@@ -639,12 +692,65 @@ exp_envelope =  (exp_envelope - np.min(exp_envelope)) / (np.max(exp_envelope) - 
 smoothed_envelope_MA = 0.8*((smoothed_envelope_MA - np.min(smoothed_envelope_MA)) / (np.max(smoothed_envelope_MA) - np.min(smoothed_envelope_MA)))
 smoothed_envelope_SG = 0.8*((smoothed_envelope_SG - np.min(smoothed_envelope_SG)) / (np.max(smoothed_envelope_SG) - np.min(smoothed_envelope_SG)))
 
-#
-# if len(you_envelope) > len(exp_envelope):
-#     you_envelope = signal.resample(you_envelope, len(exp_envelope))
-# else:
-#     exp_envelope = signal.resample(exp_envelope, len(you_envelope))
-# you_residual = you_envelope - exp_envelope
+# x = np.arange(len(you_envelope))
+# center_index = 96 #len(you_envelope) // 2
+# flipped_envelope = np.flip(you_envelope)
+# shifted_flipped = np.roll(flipped_envelope, center_index - len(flipped_envelope) // 2)
+# residual = you_envelope - shifted_flipped
+# plt.figure(figsize=(12, 6))
+# plt.subplot(2, 1, 1)
+# plt.plot(x, you_envelope, label='Original Envelope', color='blue')
+# plt.plot(x, shifted_flipped, label='Flipped Envelope', color='orange', linestyle='--')
+# plt.title("Original vs Flipped Envelope")
+# plt.ylabel("Amplitude")
+# plt.legend()
+# plt.grid(True)
+# plt.subplot(2, 1, 2)
+# plt.plot(x, residual, label='Residual (Original - Flipped)', color='green')
+# plt.axhline(0, color='black', linewidth=0.8, linestyle=':')
+# plt.title("Residual Showing Asymmetry")
+# plt.xlabel("Sample Index")
+# plt.ylabel("Amplitude Difference")
+# plt.legend()
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()
+
+x = np.arange(len(you_envelope))
+flipped_envelope = np.flip(you_envelope)
+f_interp = interp1d(x, flipped_envelope, kind='cubic', fill_value="extrapolate")
+desired_center = 99.6
+current_center = len(flipped_envelope) / 2
+shift = desired_center - current_center
+x_shifted = x + shift
+shifted_flipped = f_interp(x_shifted)
+mirror_residual = you_envelope - shifted_flipped
+plt.figure(figsize=(12, 6))
+plt.subplot(2, 1, 1)
+plt.plot(x, you_envelope, label='Simulated Envelope (Ephemeris Method)')
+plt.plot(x, shifted_flipped, label=f'Mirrored Simulated Envelope', linestyle='--')
+plt.ylim(0,1)
+plt.xlabel('Index')
+plt.ylabel('Normalised Amplitude')
+plt.legend()
+plt.title("Mirrored Envelope Comparison")
+plt.subplot(2, 1, 2)
+plt.plot(x, mirror_residual, label='Residual (Original - Mirror)', color='green')
+plt.axhline(0, color='black', linestyle=':')
+plt.legend()
+plt.xlabel('Index')
+plt.ylabel('Normalised Amplitude')
+plt.title("Residual Showing Asymmetry")
+plt.tight_layout()
+plt.show()
+
+
+
+if len(you_envelope) > len(exp_envelope):
+    you_envelope = signal.resample(you_envelope, len(exp_envelope))
+else:
+    exp_envelope = signal.resample(exp_envelope, len(you_envelope))
+you_residual = you_envelope - exp_envelope
 
 print(len(you_envelope))
 print(len(exp_envelope))
@@ -668,32 +774,26 @@ else:
     original_signal = exp_envelope
     resampled_signal = exp_envelope_resampled
 
-# Calculate residual: difference between original and resampled signal
-residual = original_signal - resampled_signal
 
-# Calculate uncertainty (standard deviation of the residual)
-uncertainty = np.std(residual)
+# min_length = min(len(original_signal), len(resampled_signal), len(mirror_residual))
+# residual = original_signal[:min_length] - resampled_signal[:min_length] - mirror_residual[:min_length]
 
-print("Uncertainty introduced by interpolation:", uncertainty)
+# residual = original_signal - resampled_signal - mirror_residual
 
-max_amplitude = np.max(original_signal)  # Or np.max(resampled_signal)
-relative_uncertainty = np.std(residual) / max_amplitude
-print("Relative Uncertainty:", relative_uncertainty)
-
-
-# Optionally, plot the original and resampled signals and show the residuals
-plt.figure(figsize=(10, 6))
-plt.plot(original_signal, label="Original Signal (you_envelope)", alpha=0.7)
-plt.plot(resampled_signal, label="Resampled Signal", alpha=0.7)
-plt.fill_between(range(len(residual)), residual - uncertainty, residual + uncertainty, color='orange', alpha=0.3, label="Uncertainty Range")
-plt.legend()
-plt.title('Comparison of Original and Resampled Signals with Uncertainty Range')
-plt.show()
 # =======
 
-smooth_you_residual_MA = (you_envelope - smoothed_envelope_MA)
-smooth_you_residual_SG = (you_envelope - smoothed_envelope_SG)
+min_length = min(len(you_envelope), len(smoothed_envelope_MA), len(mirror_residual))
+smooth_you_residual_MA = you_envelope[:min_length] - smoothed_envelope_MA[:min_length] - mirror_residual[:min_length]
+smooth_you_residual_MA_b4 = (you_envelope - smoothed_envelope_MA)
 
+plt.plot(all_time[envelope_times], smooth_you_residual_MA, label='mirror')
+plt.plot(all_time[envelope_times], smooth_you_residual_MA_b4, label='b4')
+plt.legend()
+plt.show()
+
+
+# smooth_you_residual_MA = (you_envelope - smoothed_envelope_MA - mirror_residual)
+smooth_you_residual_SG = (you_envelope - smoothed_envelope_SG) # - mirror_residual)
 
 # subtract a sine wave from sg residual
 sine_wave = 0.25 * np.cos(2 * np.pi * (1/1.15e9) * (all_time[envelope_times]+2.8e9))

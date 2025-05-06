@@ -32,7 +32,16 @@ from scipy.integrate import simps
 from scipy import interpolate
 
 import time
-start_time = time.time()  # Start timer
+
+import time as ti
+
+start_ti = ti.time()
+
+
+
+
+
+
 
 # ====================== CONSTANTS ======================
 Tzenith = (162e-9)/2
@@ -197,7 +206,7 @@ plt.ylabel('Amplitude')
 plt.grid(True)
 # plt.legend(fontsize=8, loc='upper right')
 plt.tight_layout()
-plt.show()
+# plt.show()
 
 print(len(all_signals)) #=129
 
@@ -227,7 +236,7 @@ plt.title("Signal Envelope (Max every 210 samples)")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+# plt.show()
 
 if np.max(exp_envelope) - np.min(exp_envelope) != 0:
     exp_envelope = 4 * (exp_envelope - np.min(exp_envelope)) / (np.max(exp_envelope) - np.min(exp_envelope)) - 2
@@ -280,7 +289,7 @@ plt.ylabel("Amplitude")
 plt.title("Smoothed Envelope vs. Original")
 plt.legend()
 plt.grid(True)
-plt.show()
+# plt.show()
 
 
 # ====================== MACHINE LEARNING SETUP ======================
@@ -319,47 +328,68 @@ def prepare_training_data(signal, envelope, envelope_times, window_size=10):
 
 
 # ====================== MODEL TRAINING ======================
+# Smooth the input signals first
+smoothed_signal_MA = moving_average(all_signals, window_size=5)
+smoothed_signal_SG = savgol_filter(all_signals, window_length=15, polyorder=3)
 
 # Prepare training data
-window_size = 20  # Adjust based on your signal characteristics - 20!!
+window_size = 20
+
+# RAW MODEL
 X, y = prepare_training_data(all_signals, exp_envelope, envelope_times, window_size)
 
-X_MA, y_MA = prepare_training_data(all_signals, smoothed_envelope_MA, envelope_times, window_size)
-X_SG, y_SG = prepare_training_data(all_signals, smoothed_envelope_SG, envelope_times, window_size)
+# MA MODEL (smoothed input + smoothed target)
+X_MA, y_MA = prepare_training_data(smoothed_signal_MA, smoothed_envelope_MA, envelope_times, window_size)
 
-# Split into training and validation sets
+# SG MODEL (smoothed input + smoothed target)
+X_SG, y_SG = prepare_training_data(smoothed_signal_SG, smoothed_envelope_SG, envelope_times, window_size)
+
+# Train/Val Split
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 X_MA_train, X_MA_val, y_MA_train, y_MA_val = train_test_split(X_MA, y_MA, test_size=0.2, random_state=42)
 X_SG_train, X_SG_val, y_SG_train, y_SG_val = train_test_split(X_SG, y_SG, test_size=0.2, random_state=42)
 
-# =============LSTM=========================
-# Reshape data for LSTM
-# X_lstm = X.reshape(X.shape[0], X.shape[1], 1)
+# Models
+model = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=100, random_state=42))
+model_MA = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=100, random_state=42))
+model_SG = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=100, random_state=42))
 
-# model = Sequential()
-# model.add(LSTM(64, activation='relu', input_shape=(X.shape[1], 1)))
-# model.add(Dense(1))
-# model.compile(optimizer='adam', loss='mse')
-# model.fit(X_lstm, y, epochs=35, batch_size=2)
-
-# =============RandomForest=================
-model = make_pipeline(
-    StandardScaler(),
-    RandomForestRegressor(n_estimators=100, random_state=42)
-)
-
-model_MA = make_pipeline(
-    StandardScaler(),
-    RandomForestRegressor(n_estimators=100, random_state=42)
-)
-
-model_SG = make_pipeline(
-    StandardScaler(),
-    RandomForestRegressor(n_estimators=100, random_state=42)
-)
+# Fit models
+model.fit(X_train, y_train)
 model_MA.fit(X_MA_train, y_MA_train)
 model_SG.fit(X_SG_train, y_SG_train)
-model.fit(X_train, y_train)
+
+#
+# # Prepare training data
+# window_size = 20  # Adjust based on your signal characteristics - 20!!
+# X, y = prepare_training_data(all_signals, exp_envelope, envelope_times, window_size)
+#
+# X_MA, y_MA = prepare_training_data(all_signals, smoothed_envelope_MA, envelope_times, window_size)
+# X_SG, y_SG = prepare_training_data(all_signals, smoothed_envelope_SG, envelope_times, window_size)
+#
+# # Split into training and validation sets
+# X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+# X_MA_train, X_MA_val, y_MA_train, y_MA_val = train_test_split(X_MA, y_MA, test_size=0.2, random_state=42)
+# X_SG_train, X_SG_val, y_SG_train, y_SG_val = train_test_split(X_SG, y_SG, test_size=0.2, random_state=42)
+#
+# # =============RandomForest=================
+# model = make_pipeline(
+#     StandardScaler(),
+#     RandomForestRegressor(n_estimators=100, random_state=42)
+# )
+#
+# model_MA = make_pipeline(
+#     StandardScaler(),
+#     RandomForestRegressor(n_estimators=100, random_state=42)
+# )
+#
+# model_SG = make_pipeline(
+#     StandardScaler(),
+#     RandomForestRegressor(n_estimators=100, random_state=42)
+# )
+# model_MA.fit(X_MA_train, y_MA_train)
+# model_SG.fit(X_SG_train, y_SG_train)
+# model.fit(X_train, y_train)
 # ==========================================
 
 # Evaluate model
@@ -380,6 +410,18 @@ print(f"Validation RMSE MA: {np.sqrt(mean_squared_error(y_MA_val, val_pred_MA))}
 
 print(f"Train RMSE SG: {np.sqrt(mean_squared_error(y_SG_train, train_pred_SG))}")
 print(f"Validation RMSE SG: {np.sqrt(mean_squared_error(y_SG_val, val_pred_SG))}")
+
+residual_MA = y_MA_val - val_pred_MA
+uncertainty_val_MA = np.std(residual_MA)
+print('Standard Deviation of MA Residuals:', uncertainty_val_MA)
+
+residual_stv = y_val - val_pred
+uncertainty_val_stv = np.std(residual_stv)
+print('Standard Deviation of Raw Residuals:', uncertainty_val_stv)
+
+residual_SG = y_SG_val - val_pred_SG
+uncertainty_val_SG = np.std(residual_SG)
+print('Standard Deviation of SG Residuals:', uncertainty_val_SG)
 
 # ====================== VISUALIZATION ======================
 
@@ -403,7 +445,7 @@ plt.ylabel("Amplitude")
 plt.title("Signal Envelope Random Forest Prediction")
 # plt.legend()
 plt.grid(True)
-plt.show()
+# plt.show()
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -470,7 +512,7 @@ plt.ylabel("Normalized Amplitude")
 plt.title(f"Proper Time-Aligned Residuals (Delay: {time_delay:.2e}s)")
 plt.legend()
 plt.grid(True)
-plt.show()
+# plt.show()
 
 # Verification
 print(f"Experimental times shape: {all_time[envelope_times].shape}")
@@ -548,6 +590,6 @@ print(f"ML Residual: {mean_ml:.4f}")
 # plt.show()
 
 
-end_time = time.time()  # End timer
-elapsed_time = end_time - start_time  # Compute elapsed time
-print(f"Execution time: {elapsed_time:.4f} seconds")
+end_ti = ti.time()
+runtime_seconds = end_ti - start_ti
+print(f"Runtime: {runtime_seconds:.6f} seconds")
