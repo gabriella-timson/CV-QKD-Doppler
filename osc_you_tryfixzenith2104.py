@@ -580,7 +580,7 @@ old_pos = sat_old.at(time).position.km
 new_pos = sat_new.at(time).position.km
 
 # Plot in 3D
-fig = plt.figure(figsize=(10, 8))
+fig = plt.figure(figsize=(10, 5))
 ax = fig.add_subplot(111, projection='3d')
 
 # Plot Earth (simplified)
@@ -589,6 +589,7 @@ v = np.linspace(0, np.pi, 100)
 x = 6371 * np.outer(np.cos(u), np.sin(v))  # Earth radius = 6371 km
 y = 6371 * np.outer(np.sin(u), np.sin(v))
 z = 6371 * np.outer(np.ones(np.size(u)), np.cos(v))
+
 ax.plot_surface(x, y, z, color='blue', alpha=0.1)
 
 # Plot orbits
@@ -601,14 +602,17 @@ ax.set_zlabel('Z (km)')
 ax.set_title('ISS Orbit Comparison: Old vs New TLE')
 ax.legend()
 plt.tight_layout()
+plt.savefig('issoldnew', dpi=300)
 plt.show()
 
+plt.figure(figsize=(10,5))
 distance_km = np.sqrt(np.sum((new_pos - old_pos)**2, axis=0))
 plt.plot(minutes, distance_km)
-plt.xlabel('Time (minutes)')
-plt.ylabel('Distance (km)')
-plt.title('Separation Between Old and New TLE Over Time')
+plt.xlabel('Time (minutes)', fontsize=12)
+plt.ylabel('Distance (km)', fontsize=12)
+plt.title('Separation Between Old and New TLE Over One ISS Orbit', fontsize=14)
 plt.grid()
+plt.savefig('septle', dpi=300)
 plt.show()
 
 # [0.46587207 0.46787316 0.46987459 ... 0.23803916 0.23590164 0.23376856]

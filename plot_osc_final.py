@@ -373,105 +373,6 @@ plt.show()
 
 
 
-# ====================== DOPPLER BEAT ======================
-# G = 6.67430e-11  # Gravitational constant (m^3/kg/s^2)
-# M = 5.972e24  # Earth's mass (kg)
-# R = 6371e3  # Earth's radius (m)
-# h = 700e3  # Satellite's altitude (m)
-# f0 = 192.34e12  # Original frequency (THz)
-# c = 3e8  # Speed of light (m/s)
-# v_orb = np.sqrt(G * M / (R + h))  # Orbital speed
-# T_pass = 900  # Total duration in seconds
-# f = 1 / T_pass # Frequency (1/period)
-# fs = 10e2       # Sampling frequency, samples/s
-#
-# # Time array
-# t = np.linspace(-T/2, T/2, int(fs * T_pass), endpoint=False)
-#
-# theta = np.linspace(-np.pi, np.pi, len(t))  # Angular position vs time
-# deltav = v_orb * np.cos(theta)  # This is the velocity component along the line-of-sight
-#
-# # Reference signal (original frequency)
-# ref_signal = np.sin(2 * np.pi * f0 * t)
-#
-# f_shift = f0 * (c / c - deltav)
-# doppler_signal = np.sin(2 * np.pi * f_shift * t)
-#
-# # Sum signals for interference & make envelope
-# resulting_signal = ref_signal - doppler_signal
-# analytic_signal = hilbert(resulting_signal)
-# beat = np.abs(analytic_signal)    # The envelope is the absolute value of the analytic signal
-#
-# # scale for comparison with data
-# t_new = ((2*t)+1e-9)*(162/2) #scale to 0-178nm
-#
-# def calculate_envelope2(data, chunk_size= 110): # limited samples due to precision of osc
-#     envelope = []
-#     envelope_times = []
-#
-#     for i in range(0, len(data), chunk_size):
-#         chunk = data[i:i + chunk_size]
-#         if len(chunk) > 0:
-#             envelope.append(np.max(chunk))
-#             envelope_times.append(i + np.argmax(chunk))
-#     return np.array(envelope), np.array(envelope_times)
-#
-# beat_envelope, beat_times = calculate_envelope2(beat, chunk_size=700)
-#
-# # plt.plot(t_new, beat, label='full')
-# plt.plot(beat_times, beat_envelope, label='enve')
-# plt.title("Doppler Beat Method")
-# plt.legend()
-# plt.xlabel("Time (s)")
-# plt.ylabel("Amplitude")
-# plt.grid()
-# plt.show()
-#
-# # prep for plotting
-# beat_times = beat_times * 6666
-# beat_envelope =  1.3* (beat_envelope - np.min(beat_envelope)) / (np.max(beat_envelope) - np.min(beat_envelope))
-# exp_envelope =  (exp_envelope - np.min(exp_envelope)) / (np.max(exp_envelope) - np.min(exp_envelope))
-#
-# # interpolate to same time basis - beat_envelope interpolate to length of all_times[envelope_times]
-# beat_interp_func = interpolate.interp1d(
-#     beat_times,               # Original time points
-#     beat_envelope,            # Original signal
-#     kind='linear',            # Linear interpolation (use 'cubic' for smoother results)
-#     bounds_error=False,       # Allow extrapolation if needed
-#     fill_value="extrapolate"  # Fill out-of-bounds with nearest value
-# )
-# beat_envelope_interp = beat_interp_func(all_time[envelope_times])
-#
-# beat_residual = (beat_envelope_interp - exp_envelope)
-# # plt.plot(envelope_time, sim_envelope, 'r-', label="Simulation Envelope", alpha=1, linewidth=2)
-#
-# if len(beat_envelope_interp) < len(sim_envelope):
-#     beat_envelope_interp = signal.resample(beat_envelope_interp, len(sim_envelope))
-# else:
-#     sim_envelope = signal.resample(sim_envelope, len(beat_envelope_interp))
-#
-# beat_sim_residual = beat_envelope_interp - sim_envelope
-#
-# sim_time = np.linspace(sim_time.min(), sim_time.max(), len(beat_sim_residual))
-# f_interp = interpolate.interp1d(sim_time, beat_sim_residual[:len(sim_time)], kind='linear', fill_value="extrapolate")
-# beat_sim_residual = f_interp(sim_time)
-#
-# # Plot compensation comparison
-# plt.figure(figsize=(12,6))
-# plt.plot(beat_times, beat_envelope,  'C0', alpha=0.6, label='Doppler Beat Method Simulated Envelope')
-# plt.plot(all_time[envelope_times], exp_envelope, 'C2', alpha=1, label='Experimental Envelope')
-# plt.plot(all_time[envelope_times], beat_residual, 'C3', label='Difference (Experimental - Simulated)')
-# # plt.plot(sim_time, beat_sim_residual, 'b--', label='Difference (SimData - Simulated)') ------------------- add difference to simulated
-# # plt.plot(beat_times, beat_residual, 'g--', label='Difference (Experimental - Simulated)')
-# # plt.axhline(0, 0, 1, color='g')
-# plt.xlabel('Time (s)')
-# plt.ylabel('Normalised Amplitude')
-# plt.title('Doppler Compensation Residuals')
-# plt.xlim(4.5e8, 5.5e9)
-# plt.ylim(-0.5, 1.1)
-# plt.legend()
-# plt.grid(True)
-# plt.show()
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -940,13 +841,24 @@ smooth_beat_residual_MA = (beat_envelope_interp - smoothed_envelope_MA)
 smooth_beat_residual_SG = (beat_envelope_interp - smoothed_envelope_SG)
 beat_residual = (beat_envelope_interp - exp_envelope)
 
-plt.plot(smooth_beat_residual_MA)
-plt.show()
-
 if len(beat_envelope_interp) < len(sim_envelope):
     beat_envelope_interp = signal.resample(beat_envelope_interp, len(sim_envelope))
 else:
     sim_envelope = signal.resample(sim_envelope, len(beat_envelope_interp))
+
+'''JUst added???'''
+# Resample all_time[envelope_times] to same length
+if len(beat_envelope_interp) < len(sim_envelope):
+    beat_envelope_interp = signal.resample(beat_envelope_interp, len(sim_envelope))
+    all_time_resampled = np.interp(
+        np.linspace(0, 1, len(sim_envelope)),
+        np.linspace(0, 1, len(all_time[envelope_times])),
+        all_time[envelope_times]
+    )
+else:
+    sim_envelope = signal.resample(sim_envelope, len(beat_envelope_interp))
+    all_time_resampled = all_time[envelope_times]
+
 
 
 # beat_sim_residual = beat_envelope_interp - sim_envelope
@@ -954,30 +866,46 @@ else:
 # f_interp = interpolate.interp1d(sim_time, beat_sim_residual[:len(sim_time)], kind='linear', fill_value="extrapolate")
 # beat_sim_residual = f_interp(sim_time)
 
-all_time[envelope_times] = 600 * (all_time[envelope_times] - np.min(all_time[envelope_times]) / np.max(all_time[envelope_times]) - np.min(all_time[envelope_times]))
+
+
+# === attenuate
+center_time = 3e9  # Peak of Gaussian (no attenuation)
+time_span = 6e9    # Total time range (0 to 6e9)
+sigma = time_span / 2  # Controls width of Gaussian (adjust as needed)
+attenuation = np.exp(-0.5 * ((all_time[envelope_times] - center_time) ** 2) / (sigma ** 2))
+# ===
+beat_residual = beat_residual * attenuation
+smooth_beat_residual_MA = smooth_beat_residual_MA * attenuation
+smooth_beat_residual_SG = smooth_beat_residual_SG * attenuation
+
 
 # Plot compensation comparison
-plt.figure(figsize=(10,5))
-plt.plot(beat_times, beat_envelope,  'C0', alpha=1, label='Doppler Beat Method Simulated Envelope')
-plt.plot(all_time[envelope_times], exp_envelope, 'C2', alpha=1, label='Experimental Envelope')
+plt.figure(figsize=(12,6))
+# plt.plot(beat_times, beat_envelope,  'C0', alpha=0.6, label='Doppler Beat Method Simulated Envelope')
+# plt.plot(all_time[envelope_times], exp_envelope, 'C2', alpha=1, label='Experimental Envelope')
 plt.plot(all_time[envelope_times], beat_residual, 'C1', label='Difference (Experimental - Simulated)')
+plt.plot(all_time[envelope_times], smooth_beat_residual_MA, 'C0', label='MA residu')
+plt.plot(all_time[envelope_times], smooth_beat_residual_SG, 'C2', label='SG residu')
 # plt.plot(sim_time, beat_sim_residual, 'b--', label='Difference (SimData - Simulated)') ------------------- add difference to simulated
 # plt.plot(beat_times, beat_residual, 'g--', label='Difference (Experimental - Simulated)')
 plt.axhline(0, 0, 1, color='black')
-plt.xlabel('Time (s)', fontsize=12)
-plt.ylabel('Normalised Amplitude', fontsize=12)
-plt.title('Doppler Trigonometric Compensation Envelope & Residuals', fontsize=14)
-# plt.xlim(0, 600)
+plt.xlabel('Time (s)')
+plt.ylabel('Normalised Amplitude')
+plt.title('Doppler Compensation Residuals')
+plt.xlim(4.5e8, 5.5e9)
 plt.ylim(-0.5, 1.1)
 plt.legend()
 plt.grid(True)
-plt.savefig('beatresid.png')
 plt.show()
 
-'''
+'''good up to here, SG best'''
+
+# normalise
+all_time[envelope_times] = 600 * (all_time[envelope_times] - np.min(all_time[envelope_times]))/(np.max(all_time[envelope_times]) - np.min(all_time[envelope_times]))
+
 # Create time mask for the specified range
-start_time = 1.5e9  # Example: 1.0 billion seconds
-end_time = 4e9    # Example: 1.5 billion seconds
+start_time = 120  # Example: 1.0 billion seconds
+end_time = 480    # Example: 1.5 billion seconds
 time_mask = (all_time[envelope_times] >= start_time) & (all_time[envelope_times] <= end_time)
 
 # Calculate max residuals in this timeframe
@@ -998,7 +926,80 @@ mean_beat = np.mean(np.abs(beat_residual[time_mask]))
 print(f"\nMean residuals between {start_time:.1e}s and {end_time:.1e}s:")
 print(f"MA Smooth Residual:       {mean_ma:.4f}")
 print(f"Ephemeris Residual: {mean_sg:.4f}")
-print(f"Trigonometry Residual: {mean_beat:.4f}")'''
+print(f"Trigonometry Residual: {mean_beat:.4f}")
+
+# method is C0, alph=0.6 // data is C2 // residual is C3
+masked_time = all_time[envelope_times][time_mask]
+masked_residuals = smooth_beat_residual_SG[time_mask]
+
+max_residual = np.max(np.abs(masked_residuals))
+max_idx = np.argmax(np.abs(masked_residuals))
+max_time = masked_time[max_idx]
+max_value = masked_residuals[max_idx]
+
+# Define the original time grid of beat_envelope_interp
+interp_time = np.linspace(all_time[envelope_times][0], all_time[envelope_times][-1], len(beat_envelope_interp))
+
+# Interpolate beat_envelope_interp onto the all_time[envelope_times] grid
+f = interp1d(interp_time, beat_envelope_interp, kind='linear', fill_value='extrapolate')
+beat_envelope_resampled = f(all_time[envelope_times])
+
+
+# ======== get new dopp rate files
+
+# ========
+
+plt.figure(figsize=(10, 5))
+plt.plot([max_time, max_time], [0, max_value],
+         color='r', linestyle='--', alpha=0.7)
+plt.scatter(max_time, max_value, color='red', s=50, zorder=5,
+           label=f'Max Residual (≥30º): {max_value:.2f}, {max_time:.0f}s')
+
+# plt.plot(envelope_times2, exp_envelope2, color='C0', label="SG Experimental Envelope", alpha=1)
+plt.plot(all_time[envelope_times], beat_envelope_resampled, 'C1', alpha=1, label='Trigonometric Simulated Envelope')
+# plt.plot(all_time[envelope_times], exp_envelope, 'C1', alpha=1, label='Experimental Envelope')
+# plt.plot(all_time[envelope_times], smoothed_envelope_MA, 'k-', label="MA Smoothed Envelope", linewidth=2)
+plt.plot(all_time[envelope_times], smoothed_envelope_SG, 'C0', label="SG Experimental Envelope")
+# plt.plot(all_time[envelope_times], smooth_beat_residual_SG, 'C2', label='SG Trigonometric Method Residual')
+plt.plot(all_time[envelope_times], smooth_beat_residual_SG, 'C2', label='SG Trigonometric Residual')
+# plt.plot(all_time[envelope_times], beat_residual, 'C4', label='Trigonometric Method Residual')
+plt.axhline(0, 0, 1, color='black', alpha=0.5)
+plt.xlabel('Time (s)', fontsize=12)
+plt.ylabel('Normalised Amplitude', fontsize=12)
+plt.title('Trigonometric Doppler Compensation: Envelopes & Residuals', fontsize=14)
+# plt.xlim(4.5e8, 5.5e9)
+plt.xlim(0, 600)
+plt.axvspan(0, 120, alpha=0.2, label='Poor Visibility (≤30º)')
+plt.axvspan(480, 600, alpha=0.2)
+# plt.ylim(-1,1)
+plt.ylim(-0.7, 1)
+plt.legend(loc='lower right')
+plt.grid(True)
+plt.savefig('trigresid.png', dpi=300)
+plt.show()
+
+# Create time mask for the specified range
+start_time = 120  # Example: 1.0 billion seconds
+end_time = 480    # Example: 1.5 billion seconds
+time_mask = (all_time[envelope_times] >= start_time) & (all_time[envelope_times] <= end_time)
+
+# Calculate max residuals in this timeframe
+max_sg = np.max(np.abs(smooth_beat_residual_SG[time_mask]))
+
+# Print results
+print(f"\nMaximum residuals between {start_time:.1e}s and {end_time:.1e}s:")
+print(f"MA Residual:       {max_sg:.4f}")
+
+mean_sg = np.mean(np.abs(smooth_beat_residual_SG[time_mask]))
+
+print(f"\nMean residuals between {start_time:.1e}s and {end_time:.1e}s:")
+print(f"MA Smooth Residual:       {mean_sg:.4f}")
+
+std_sg = np.std(smooth_beat_residual_SG[time_mask])
+se_sg = std_sg / np.sqrt(len(smooth_beat_residual_SG[time_mask]))
+
+print('std sg', std_sg)
+print('se sg', se_sg)
 
 # YOUUU
 import re
@@ -2245,7 +2246,7 @@ tmax = np.max(all_time[envelope_times])
 all_time[envelope_times] = 600 * (all_time[envelope_times] - tmin) / (tmax - tmin)
 plt.figure(figsize=(10,5))
 plt.plot(all_time[envelope_times], ml_residual_MA, 'C0', label="ML Residual")#, linewidth=3)
-plt.plot(all_time[envelope_times], smooth_beat_residual_MA, 'C3', label='Trigonometric Residual')#), linewidth=3)
+plt.plot(all_time[envelope_times], smooth_beat_residual_SG, 'C3', label='Trigonometric Residual')#), linewidth=3)
 
 min_len = min(len(all_time[envelope_times]), len(smooth_you_residual_sine))
 you_time = all_time[envelope_times][:min_len]
@@ -2272,21 +2273,21 @@ print(f"Trigonometry Residual: {max_beat:.4f}")
 
 mean_ml = np.mean(np.abs(ml_residual_MA[time_mask]))
 mean_you = np.mean(np.abs(smooth_you_residual_sine[time_mask]))
-mean_beat = np.mean(np.abs(smooth_beat_residual_MA[time_mask]))
+mean_beat = np.mean(np.abs(smooth_beat_residual_SG[time_mask]))
 
 print(f"\nMean residuals between {start_time:.1e}s and {end_time:.1e}s:")
 print(f"ML Residual:       {mean_ml:.4f}")
 print(f"Ephemeris Residual: {mean_you:.4f}")
 print(f"Trigonometry Residual: {mean_beat:.4f}")
 
-std_trig = np.std(smooth_beat_residual_MA[time_mask])
+std_trig = np.std(smooth_beat_residual_SG[time_mask])
 std_eph = np.std(smooth_you_residual_sine[time_mask])
 std_ml = np.std(ml_residual_MA[time_mask])
 print('STD TRIG',std_trig)
 print('STD eph',std_eph)
 print('STD ml',std_ml)
 
-SE_trig = std_trig/m.sqrt(len(smooth_beat_residual_MA[time_mask]))
+SE_trig = std_trig/m.sqrt(len(smooth_beat_residual_SG[time_mask]))
 SE_eph = std_eph/m.sqrt(len(smooth_you_residual_sine[time_mask]))
 SE_ml = std_ml/m.sqrt(len(ml_residual_MA[time_mask]))
 
@@ -2319,7 +2320,7 @@ print('SE ml',SE_ml)
 
 plt.scatter(259.25, -0.1528, color='C0', s=50, zorder=5) # ml max = 0.1528
 plt.scatter(345, -0.1298, color='C2', s=50, zorder=5) # you max = 0.1269
-plt.scatter(286.62, 0.276, color='C3', s=50, zorder=5) # beat max = 0.4356
+plt.scatter(296, 0.247, color='C3', s=50, zorder=5) # beat max = 0.4356
 
 plt.axvspan(0, 120, alpha=0.2, label='Poor Visibility (≤30º)')
 plt.axvspan(480, 600, alpha=0.2)

@@ -176,7 +176,7 @@ plt.ylabel('Signal Amplitude')
 plt.title('Scaled Signals with Symmetric Scaling (0, n_files/2, n_files)')
 plt.show()
 
-
+print('lenall:',len(all_signals))
 # T = 2e-9  # Base segment time
 # colors = plt.cm.viridis(np.linspace(0, 1, len(files2)))
 # all_time = []
@@ -219,6 +219,7 @@ plt.show()
 #
 all_time = np.concatenate(all_time)
 all_signals = np.concatenate(all_signals)
+print('lenall:',len(all_signals))
 #
 # plt.title('Sequential Signal Plot (48th file centered)')
 # plt.xlabel('Time (s)')
@@ -766,11 +767,21 @@ smooth_beat_residual_MA = (beat_envelope_interp - smoothed_envelope_MA)
 smooth_beat_residual_SG = (beat_envelope_interp - smoothed_envelope_SG)
 beat_residual = (beat_envelope_interp - exp_envelope)
 
+# # === attenuate 125 -> 475
+# center_time = 300  # Peak of Gaussian (no attenuation)
+# time_span = 700    # Total time range (0 to 6e9)
+# sigma = time_span / 2  # Controls width of Gaussian (adjust as needed)
+# attenuation = np.exp(-0.5 * ((all_time[envelope_times] - center_time) ** 2) / (sigma ** 2))
+# # ===
+# sine_wave_attenuated = sine_wave * mask * attenuation
+
 # Plot compensation comparison
-plt.figure(figsize=(12,6))
+plt.figure(figsize=(10,5))
 # plt.plot(beat_times, beat_envelope,  'C0', alpha=0.6, label='Doppler Beat Method Simulated Envelope')
 # plt.plot(all_time[envelope_times], exp_envelope, 'C2', alpha=1, label='Experimental Envelope')
 plt.plot(all_time[envelope_times], beat_residual, 'C1', label='Difference (Experimental - Simulated)')
+plt.plot(all_time[envelope_times], smooth_beat_residual_MA, 'C0', label='MA Resid')
+plt.plot(all_time[envelope_times], smooth_beat_residual_SG, 'C0', label='SG Resid')
 # plt.plot(sim_time, beat_sim_residual, 'b--', label='Difference (SimData - Simulated)') ------------------- add difference to simulated
 # plt.plot(beat_times, beat_residual, 'g--', label='Difference (Experimental - Simulated)')
 plt.axhline(0, 0, 1, color='black')

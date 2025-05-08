@@ -333,7 +333,7 @@ smoothed_signal_MA = moving_average(all_signals, window_size=5)
 smoothed_signal_SG = savgol_filter(all_signals, window_length=15, polyorder=3)
 
 # Prepare training data
-window_size = 20
+window_size = 40
 
 # RAW MODEL
 X, y = prepare_training_data(all_signals, exp_envelope, envelope_times, window_size)
@@ -350,9 +350,9 @@ X_MA_train, X_MA_val, y_MA_train, y_MA_val = train_test_split(X_MA, y_MA, test_s
 X_SG_train, X_SG_val, y_SG_train, y_SG_val = train_test_split(X_SG, y_SG, test_size=0.2, random_state=42)
 
 # Models
-model = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=100, random_state=42))
-model_MA = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=100, random_state=42))
-model_SG = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=100, random_state=42))
+model = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=300, max_depth=10, random_state=42))
+model_MA = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=300, max_depth=10, random_state=42))
+model_SG = make_pipeline(StandardScaler(), RandomForestRegressor(n_estimators=300, max_depth=10, random_state=42))
 
 # Fit models
 model.fit(X_train, y_train)
@@ -434,18 +434,39 @@ predicted_envelope_SG = model_SG.predict(full_features)
 # Create time points for the predicted envelope
 predicted_times = np.arange(window_size, len(all_signals)) * (all_time[1] - all_time[0]) + all_time[0]
 
+# predicted_envelope = predicted_envelope / 2
+# exp_envelope = exp_envelope / 2
+#
+# all_time[envelope_times] = 600 * ((all_time[envelope_times] - np.min(all_time[envelope_times]))/(np.max(all_time[envelope_times]) - np.min(all_time[envelope_times])))
+# predicted_times = 600 * ((predicted_times - np.min(predicted_times))/ (np.max(predicted_times) - np.min(predicted_times)))
+
 # method is C0, alph=0.6 // data is C2 // residual is C3
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(10, 5))
+plt.plot(all_time[envelope_times], exp_envelope, 'C0', label="Data Envelope", linewidth=2)
+plt.plot(predicted_times, predicted_envelope, 'C3', label="Predicted Envelope", linewidth=2)
+# plt.plot(predicted_times, predicted_envelope_MA, 'C2', label="Predicted Envelope MA", linewidth=2)
+# plt.plot(predicted_times, predicted_envelope_SG, 'C1', label="Predicted Envelope SG", linewidth=2)
+plt.xlabel("Time (s)", fontsize=12)
+plt.ylabel("Normalised Amplitude", fontsize=12)
+plt.title("Signal Envelope Random Forest Prediction", fontsize=14)
+plt.legend()
+plt.grid(True)
+# plt.savefig('mlenvelopes.png', dpi=300)
+plt.show()
+
+plt.figure(figsize=(10, 5))
 plt.plot(all_time[envelope_times], exp_envelope, 'C0', label="True Envelope", linewidth=2)
 plt.plot(predicted_times, predicted_envelope, 'C3', label="Predicted Envelope", linewidth=2)
 # plt.plot(predicted_times, predicted_envelope_MA, 'C2', label="Predicted Envelope MA", linewidth=2)
 # plt.plot(predicted_times, predicted_envelope_SG, 'C1', label="Predicted Envelope SG", linewidth=2)
-plt.xlabel("Time")
-plt.ylabel("Amplitude")
-plt.title("Signal Envelope Random Forest Prediction")
-# plt.legend()
+plt.xlabel("Time (s)", fontsize=12)
+plt.ylabel("Normalised Amplitude", fontsize=12)
+plt.title("Signal Envelope Random Forest Prediction", fontsize=14)
+plt.xlim(1.2, 2e9)
+plt.ylim(0.6, 1.5)
+plt.legend()
 plt.grid(True)
-# plt.show()
+plt.show()
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -499,9 +520,9 @@ plt.figure(figsize=(12, 8))
 
 # Aligned signals
 # plt.plot(all_time[envelope_times], predicted_aligned, 'g-', label="Time-Aligned Prediction", linewidth=2)
-plt.plot(all_time[envelope_times], ml_residual, 'b--', label="Correct Residual", linewidth=2)
-plt.plot(all_time[envelope_times], ml_residual_SG, 'r--', label="SG Residual", linewidth=2)
-plt.plot(all_time[envelope_times], ml_residual_MA, 'g--', label="MA Residual", linewidth=2)
+plt.plot(all_time[envelope_times], ml_residual, 'b', label="Correct Residual", linewidth=2)
+plt.plot(all_time[envelope_times], ml_residual_SG, 'r', label="SG Residual", linewidth=2)
+plt.plot(all_time[envelope_times], ml_residual_MA, 'g', label="MA Residual", linewidth=2)
 
 
 # plt.plot(all_time[envelope_times], smooth_beat_residual_MA, 'C2', label='Difference (MA Smooth Experimental - Simulated)')
@@ -512,7 +533,7 @@ plt.ylabel("Normalized Amplitude")
 plt.title(f"Proper Time-Aligned Residuals (Delay: {time_delay:.2e}s)")
 plt.legend()
 plt.grid(True)
-# plt.show()
+plt.show()
 
 # Verification
 print(f"Experimental times shape: {all_time[envelope_times].shape}")
@@ -551,6 +572,26 @@ print(f"ML Residual: {mean_ml:.4f}")
 
 
 
+tmin = np.min(all_time[envelope_times])
+tmax = np.max(all_time[envelope_times])
+all_time[envelope_times] = 600 * (all_time[envelope_times] - tmin) / (tmax - tmin)
+plt.figure(figsize=(10,5))
+plt.plot(all_time[envelope_times], ml_residual_MA, 'C0', label="MA ML Residual")#, linewidth=3)
+plt.plot(all_time[envelope_times], ml_residual_SG, 'C3', label='SG ML Residual')#), linewidth=3)
+plt.plot(all_time[envelope_times], ml_residual, 'C2', label='ML Residual')#, linewidth=3)
+
+plt.axvspan(0, 120, alpha=0.2, label='Poor Visibility (≤30º)')
+plt.axvspan(480, 600, alpha=0.2)
+plt.axhline(0, 0, 1, color='black', alpha=0.5)
+plt.xlabel("Time (s)", fontsize=12)
+plt.ylabel("Normalised Amplitude", fontsize=12)
+plt.title("Residuals of ML Doppler Compensation Algorithm", fontsize=14)
+plt.xlim(0,600)
+plt.ylim(-0.5,0.25)
+plt.legend()
+plt.grid(True)
+plt.savefig('mlresid.png')
+plt.show()
 
 
 

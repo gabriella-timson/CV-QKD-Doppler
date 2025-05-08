@@ -490,11 +490,26 @@ else:
 # f_interp = interpolate.interp1d(sim_time, beat_sim_residual[:len(sim_time)], kind='linear', fill_value="extrapolate")
 # beat_sim_residual = f_interp(sim_time)
 
+
+
+# === attenuate
+center_time = 3e9  # Peak of Gaussian (no attenuation)
+time_span = 6e9    # Total time range (0 to 6e9)
+sigma = time_span / 2  # Controls width of Gaussian (adjust as needed)
+attenuation = np.exp(-0.5 * ((all_time[envelope_times] - center_time) ** 2) / (sigma ** 2))
+# ===
+beat_residual = beat_residual * attenuation
+smooth_beat_residual_MA = smooth_beat_residual_MA * attenuation
+smooth_beat_residual_SG = smooth_beat_residual_SG * attenuation
+
+
 # Plot compensation comparison
 plt.figure(figsize=(12,6))
 # plt.plot(beat_times, beat_envelope,  'C0', alpha=0.6, label='Doppler Beat Method Simulated Envelope')
 # plt.plot(all_time[envelope_times], exp_envelope, 'C2', alpha=1, label='Experimental Envelope')
 plt.plot(all_time[envelope_times], beat_residual, 'C1', label='Difference (Experimental - Simulated)')
+plt.plot(all_time[envelope_times], smooth_beat_residual_MA, 'C0', label='MA residu')
+plt.plot(all_time[envelope_times], smooth_beat_residual_SG, 'C2', label='SG residu')
 # plt.plot(sim_time, beat_sim_residual, 'b--', label='Difference (SimData - Simulated)') ------------------- add difference to simulated
 # plt.plot(beat_times, beat_residual, 'g--', label='Difference (Experimental - Simulated)')
 plt.axhline(0, 0, 1, color='black')
@@ -507,10 +522,14 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
+'''good up to here, SG best'''
+
+# normalise
+all_time[envelope_times] = 600 * (all_time[envelope_times] - np.min(all_time[envelope_times]))/(np.max(all_time[envelope_times]) - np.min(all_time[envelope_times]))
 
 # Create time mask for the specified range
-start_time = 1.5e9  # Example: 1.0 billion seconds
-end_time = 4e9    # Example: 1.5 billion seconds
+start_time = 120  # Example: 1.0 billion seconds
+end_time = 480    # Example: 1.5 billion seconds
 time_mask = (all_time[envelope_times] >= start_time) & (all_time[envelope_times] <= end_time)
 
 # Calculate max residuals in this timeframe
@@ -534,14 +553,6 @@ print(f"Ephemeris Residual: {mean_sg:.4f}")
 print(f"Trigonometry Residual: {mean_beat:.4f}")
 
 # method is C0, alph=0.6 // data is C2 // residual is C3
-
-all_time[envelope_times] = 600* (all_time[envelope_times] - np.min(all_time[envelope_times]))/((np.max(all_time[envelope_times])) - np.min(all_time[envelope_times]))
-
-# 30deg max residu
-start_time = 120
-end_time = 480
-time_mask = (all_time[envelope_times] >= start_time) & (all_time[envelope_times] <= end_time)
-plt.figure(figsize=(12, 6))
 masked_time = all_time[envelope_times][time_mask]
 masked_residuals = smooth_beat_residual_SG[time_mask]
 
@@ -550,15 +561,17 @@ max_idx = np.argmax(np.abs(masked_residuals))
 max_time = masked_time[max_idx]
 max_value = masked_residuals[max_idx]
 
+# Define the original time grid of beat_envelope_interp
+interp_time = np.linspace(all_time[envelope_times][0], all_time[envelope_times][-1], len(beat_envelope_interp))
 
-# Assume:
-# all_time[envelope_times]: length 118 → time points for X-axis
-# beat_envelope_interp: length 288 → Y values on a different time grid
-# You need the matching X values for beat_envelope_interp → call them beat_time_interp (length 288)
+# Interpolate beat_envelope_interp onto the all_time[envelope_times] grid
+f = interp1d(interp_time, beat_envelope_interp, kind='linear', fill_value='extrapolate')
+beat_envelope_resampled = f(all_time[envelope_times])
 
-# Interpolate beat_envelope_interp onto all_time[envelope_times]
-beat_envelope_resampled = np.interp(all_time[envelope_times], all_time_resampled, beat_envelope_interp)
 
+# ======== get new dopp rate files
+
+# ========
 
 plt.figure(figsize=(10, 5))
 plt.plot([max_time, max_time], [0, max_value],
@@ -567,12 +580,12 @@ plt.scatter(max_time, max_value, color='red', s=50, zorder=5,
            label=f'Max Residual (≥30º): {max_value:.2f}, {max_time:.0f}s')
 
 # plt.plot(envelope_times2, exp_envelope2, color='C0', label="SG Experimental Envelope", alpha=1)
-plt.plot(all_time[envelope_times], beat_envelope_interp, 'C1', alpha=1, label='Trigonometric Simulated Envelope')
+plt.plot(all_time[envelope_times], beat_envelope_resampled, 'C1', alpha=1, label='Trigonometric Simulated Envelope')
 # plt.plot(all_time[envelope_times], exp_envelope, 'C1', alpha=1, label='Experimental Envelope')
 # plt.plot(all_time[envelope_times], smoothed_envelope_MA, 'k-', label="MA Smoothed Envelope", linewidth=2)
 plt.plot(all_time[envelope_times], smoothed_envelope_SG, 'C0', label="SG Experimental Envelope")
 # plt.plot(all_time[envelope_times], smooth_beat_residual_SG, 'C2', label='SG Trigonometric Method Residual')
-plt.plot(all_time[envelope_times], smooth_beat_residual_MA, 'C2', label='Trigonometric Residual')
+plt.plot(all_time[envelope_times], smooth_beat_residual_SG, 'C2', label='SG Trigonometric Residual')
 # plt.plot(all_time[envelope_times], beat_residual, 'C4', label='Trigonometric Method Residual')
 plt.axhline(0, 0, 1, color='black', alpha=0.5)
 plt.xlabel('Time (s)', fontsize=12)
@@ -595,16 +608,23 @@ end_time = 480    # Example: 1.5 billion seconds
 time_mask = (all_time[envelope_times] >= start_time) & (all_time[envelope_times] <= end_time)
 
 # Calculate max residuals in this timeframe
-max_ma = np.max(np.abs(smooth_beat_residual_MA[time_mask]))
+max_sg = np.max(np.abs(smooth_beat_residual_SG[time_mask]))
 
 # Print results
 print(f"\nMaximum residuals between {start_time:.1e}s and {end_time:.1e}s:")
-print(f"MA Residual:       {max_ma:.4f}")
+print(f"MA Residual:       {max_sg:.4f}")
 
-mean_ma = np.mean(np.abs(smooth_beat_residual_MA[time_mask]))
+mean_sg = np.mean(np.abs(smooth_beat_residual_SG[time_mask]))
 
 print(f"\nMean residuals between {start_time:.1e}s and {end_time:.1e}s:")
-print(f"MA Smooth Residual:       {mean_ma:.4f}")
+print(f"MA Smooth Residual:       {mean_sg:.4f}")
+
+std_sg = np.std(smooth_beat_residual_SG[time_mask])
+se_sg = std_sg / np.sqrt(len(smooth_beat_residual_SG[time_mask]))
+
+print('std sg', std_sg)
+print('se sg', se_sg)
+
 
 
 

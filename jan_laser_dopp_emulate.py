@@ -174,13 +174,19 @@ print("Standard deviation:",spread_std)
 print("Peak to Peak:", spread_peak_to_peak)
 print("SE", SE)
 
+f_shift = f_shift - 192.34e12
+output9["freq"] = output9["freq"] - 192.34e12
+
 plt.plot(f_shift, label='Applied Frequency Shift')
 plt.plot(output9.index, output9["freq"], label='Output Frequency Shift')
-plt.ylabel('Frequency (THz)')
-plt.xlabel('Index')
-plt.title('Applied vs Measured Frequency Shift')
+plt.ylabel('Frequency (THz)', fontsize=12)
+plt.xlabel('Index', fontsize=12)
+plt.title('Applied vs Measured Frequency Shift', fontsize=14)
 plt.grid(True)
 plt.legend()
+# plt.xlim(0.01, 0.1)
+# plt.ylim(-1.5, 1.5)
+plt.savefig('appliedmeasured.png', dpi=300)
 plt.show()
 
 
